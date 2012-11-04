@@ -26,62 +26,59 @@ import os
 
 log = logging.getLogger(__name__)
 
-description = textwrap.dedent("""\
-    An environment manager for openstack. Can be used with 'novaclient'
-    and 'cinderclient'
 
-    Use ~/.hubblerc for user wide environments then place a
-    .hubblerc in a local directory to overide ~/.hubblerc
 
-    ----- Example ~/.hubblerc ------
-    [hubble]
-    OS_AUTH_URL=https://identity.api.rackspacecloud.com
-    CINDER_VOLUME_SERVICE_NAME=cloudBlockStorage
-    OS_SERVICE_NAME=cloudserversOpenStack
-    OS_AUTH_SYSTEM=rackspace
-    CINDERCLIENT_INSECURE=1
-    CINDER_RAX_AUTH=1
-    OS_VERSION=2.0
-    OS_NO_CACHE=1
+class FileFormat(argparse._HelpAction):
+    def __call__(self, parser, *args, **kwargs):
+        print textwrap.dedent("""\
+            [hubble]
+            OS_AUTH_URL=https://identity.api.rackspacecloud.com
+            CINDER_VOLUME_SERVICE_NAME=cloudBlockStorage
+            OS_SERVICE_NAME=cloudserversOpenStack
+            OS_AUTH_SYSTEM=rackspace
+            CINDERCLIENT_INSECURE=1
+            CINDER_RAX_AUTH=1
+            OS_VERSION=2.0
+            OS_NO_CACHE=1
 
-    # == Variable expansion ==
-    # Any variable defined in this file is available for expansion
-    # with the format of ${var_name} including these hidden variables
-    # 'options.user' - the --user option from the command line
-    # 'options.user' - the <env> option from the command line
-    # 'secton' - the name of the section the variable is being expanded in
+            # == Variable expansion ==
+            # Any variable defined in this file is available for expansion
+            # with the format of ${var_name} including these hidden variables
+            # 'options.user' - the --user option from the command line
+            # 'options.user' - the <env> option from the command line
+            # 'secton' - the name of the section the variable is being expanded in
 
-    # Command to run by default
-    cmd=cinder
+            # Command to run by default
+            cmd=cinder
 
-    [prod]
-    # Command to populate additional environment variables
-    # Great for impersonating customers!
-    env_cmd=get-customer-auth ${OS_AUTH_URL} ${options.user}
-    # Run the 'cmd' once for each of these environments
-    meta=['dfw', 'ord']
+            [prod]
+            # Command to populate additional environment variables
+            # Great for impersonating customers!
+            env_cmd=get-customer-auth ${OS_AUTH_URL} ${options.user}
+            # Run the 'cmd' once for each of these environments
+            meta=['dfw', 'ord']
 
-    [dfw]
-    OS_REGION_NAME=DFW
+            [dfw]
+            OS_REGION_NAME=DFW
 
-    [ord]
-    OS_REGION_NAME=ORD
+            [ord]
+            OS_REGION_NAME=ORD
 
-    [lon]
-    OS_AUTH_URL=https://lon.identity.api.rackspacecloud.com
-    OS_REGION_NAME=LON
+            [lon]
+            OS_AUTH_URL=https://lon.identity.api.rackspacecloud.com
+            OS_REGION_NAME=LON
 
-    [prod-nova]
-    cmd=nova
-    meta=['dfw', 'ord']
+            [prod-nova]
+            cmd=nova
+            meta=['dfw', 'ord']
 
-    [staging]
-    USERNAME=myusername
-    TENANT=73331
-    APIKEY=a2a08609c073654e83cd4fa382e09a5a
-    REGION=STAGING
-    --------------------------------
-""")
+            [staging]
+            USERNAME=myusername
+            TENANT=73331
+            APIKEY=a2a08609c073654e83cd4fa382e09a5a
+            REGION=STAGING
+        """)
+        parser.exit()
 
 
 class Env(dict):
@@ -186,13 +183,13 @@ def getEnvironments(args, config):
 
 
 def toDict(string):
-    string = string.rstrip()
     return dict([[i.strip() for i in line.split('=', 1)]
-            for line in string.split('\n')])
+            for line in string.rstrip().split('\n')])
 
 
 def run(cmd):
     try:
+        # don't attempt to run an empty command
         if re.match('^(|\s*)$', cmd):
             return []
         return toDict(check_output(cmd, shell=True))
@@ -202,18 +199,37 @@ def run(cmd):
 
 def main():
     logging.basicConfig(format='-- %(message)s')
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(add_help=False,
          formatter_class=argparse.RawDescriptionHelpFormatter,
-         description=description)
-    parser.add_argument('env', metavar='<ENV>', help="The section in ~/.hubblerc to use")
+         description = textwrap.dedent("""\
+            An environment manager for openstack. Can be used with 'novaclient'
+            and 'cinderclient'
+
+            Use ~/.hubblerc for user wide environments then place a
+            .hubblerc in a local directory to overide ~/.hubblerc
+            """))
+
+    parser.add_argument('env', nargs='?', metavar='<ENV>',
+            help="The section in ~/.hubblerc to use")
+    parser.add_argument('--file-format', action=FileFormat,
+            help="Show an example ~/.hubblerc")
+    parser.add_argument('-h', '--help', action='store_true',
+            help="show this help message and exit")
     parser.add_argument('-d', '--debug', action='store_true',
             help="Adds CINDERCLIENT_DEBUG=1 to the environment and passes"
             " --debug to selected command")
     hubble_args, other_args = parser.parse_known_args()
 
+    # Do this so we pass along the -h to cinder or nova if we are impersonating
+    if hubble_args.help and len(other_args) == 0:
+        return parser.print_help()
+    if hubble_args.env == None:
+        return parser.print_help()
+    if hubble_args.help:
+        other_args.append('--help')
+
+    # TODO: allow invocation detection (ln -s /usr/bin/cinder /usr/bin/hubble)
     # TODO: Add a --list argument, like supernova
-    #if hubble_args.list:
-        #return printEnvrionments(environments)
 
     try:
         # Read environment values from config files
@@ -225,6 +241,8 @@ def main():
             if hubble_args.debug:
                 print "%r\n" % env
 
+            # TODO: Only invocate if asked to? (my passing -u or make a config option?)
+            # maybe call it optional_cmd, and have a always_cmd for always
             if 'env_cmd' in env:
                 # run the auth command
                 env.add(run(env['env_cmd'].value))
