@@ -44,8 +44,8 @@ class FileFormat(argparse._HelpAction):
             # == Variable expansion ==
             # Any variable defined in this file is available for expansion
             # with the format of ${var_name} including these hidden variables
-            # 'options.user' - the --user option from the command line
-            # 'options.user' - the <env> option from the command line
+            # 'opt.options' - the --options option from the command line
+            # 'opt.env' - the <env> option from the command line
             # 'secton' - the name of the section the variable is being expanded in
 
             # Command to run by default
@@ -54,7 +54,7 @@ class FileFormat(argparse._HelpAction):
             [prod]
             # Command to populate additional environment variables
             # Great for impersonating customers!
-            env_cmd=get-customer-auth ${OS_AUTH_URL} ${options.user}
+            env_cmd=get-customer-auth ${OS_AUTH_URL} ${opt.options}
             # Run the 'cmd' once for each of these environments
             meta=['dfw', 'ord']
 
@@ -175,8 +175,8 @@ def getEnvironments(args, config):
         env.add(conf)
         # Add the env section
         env.add(dict(config.items(section)))
-        # Add the args to the environment as 'options.<arg_name>'
-        env.add(dict(map(lambda i: ("options.%s" % i[0], str(i[1])), vars(args).items())))
+        # Add the args to the environment as opt.'<arg_name>'
+        env.add(dict(map(lambda i: ("opt.%s" % i[0], str(i[1])), vars(args).items())))
         # Apply var expansion
         results.append(env.eval())
     return results
@@ -188,13 +188,10 @@ def toDict(string):
 
 
 def run(cmd):
-    try:
-        # don't attempt to run an empty command
-        if re.match('^(|\s*)$', cmd):
-            return []
-        return toDict(check_output(cmd, shell=True))
-    except CalledProcessError:
-        return []
+    # don't attempt to run an empty command
+    if re.match('^(|\s*)$', cmd):
+        return {}
+    return toDict(check_output(cmd, shell=True))
 
 
 def main():
@@ -211,6 +208,8 @@ def main():
 
     parser.add_argument('env', nargs='?', metavar='<ENV>',
             help="The section in ~/.hubblerc to use")
+    parser.add_argument('-o', '--options',
+            help="Optional argument to be passed to the 'opt_cmd'")
     parser.add_argument('--file-format', action=FileFormat,
             help="Show an example ~/.hubblerc")
     parser.add_argument('-h', '--help', action='store_true',
@@ -229,28 +228,33 @@ def main():
         other_args.append('--help')
 
     # TODO: allow invocation detection (ln -s /usr/bin/cinder /usr/bin/hubble)
-    # TODO: Add a --list argument, like supernova
 
     try:
         # Read environment values from config files
         environments = getEnvironments(hubble_args, readConfigs())
         for env in environments:
+            if hubble_args.options:
+                if 'opt_cmd' not in env:
+                    raise RuntimeError("provided --options, but 'opt_cmd' is not defined in"
+                            " '%s' section" % env['section'].value)
+                env.add(run(env['opt_cmd'].value))
+
+            if 'env_cmd' in env:
+                # run the env command
+                env.add(run(env['env_cmd'].value))
+
             if len(environments) != 1 or hubble_args.debug:
                 print "-- [%s] --" % green(env['section'].value)
-
-            if hubble_args.debug:
-                print "%r\n" % env
-
-            # TODO: Only invocate if asked to? (my passing -u or make a config option?)
-            # maybe call it optional_cmd, and have a always_cmd for always
-            if 'env_cmd' in env:
-                # run the auth command
-                env.add(run(env['env_cmd'].value))
 
             if 'cmd' not in env:
                 raise RuntimeError("Please specify a 'cmd' somewhere in your config")
 
+            # FIXME: when using rackspace auth cinder doesn't know how to discover
+            # the /v2.0 version endpoint. So we must specify v2.0 here
+            env['OS_AUTH_URL'].value = env['OS_AUTH_URL'].value + "/v2.0"
+
             if hubble_args.debug:
+                print "%r\n" % env
                 env.add({'CINDERCLIENT_DEBUG': '1'})
                 other_args.insert(0, '--debug')
 
@@ -265,6 +269,6 @@ def main():
             p.wait()
             print "\n",
 
-    except (CalledProcessError, NoSectionError), e:
-        log.error("-- %s" % e)
+    except (RuntimeError, CalledProcessError, NoSectionError), e:
+        log.error(e)
         return 1
