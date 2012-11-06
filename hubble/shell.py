@@ -32,31 +32,42 @@ class FileFormat(argparse._HelpAction):
     def __call__(self, parser, *args, **kwargs):
         print textwrap.dedent("""\
             [hubble]
+            # Variables that are defined for all sections
             OS_AUTH_URL=https://identity.api.rackspacecloud.com
             CINDER_VOLUME_SERVICE_NAME=cloudBlockStorage
             OS_SERVICE_NAME=cloudserversOpenStack
-            OS_AUTH_SYSTEM=rackspace
             CINDERCLIENT_INSECURE=1
-            CINDER_RAX_AUTH=1
             OS_VERSION=2.0
             OS_NO_CACHE=1
 
-            # == Variable expansion ==
-            # Any variable defined in this file is available for expansion
-            # with the format of ${var_name} including these hidden variables
-            # 'opt.options' - the --options option from the command line
-            # 'opt.env' - the <env> option from the command line
-            # 'secton' - the name of the section the variable is being expanded in
+            # Specify the command to run for all
+            # sections, unless redefined in a section
+            cmd=nova
 
-            # Command to run by default
+            # The output from this command gets sourced
+            # into the environment
+            env_cmd=echo 'SOME_SCRIPT_DEFINED_VAR=1'
+
+            # Same as the 'env_cmd' but only when the
+            # -o option is used
+            opt_cmd=rax-auth ${OS_AUTH_URL} ${opt.options}
+
+            [us-cinder]
+            OS_USERNAME=username
+            OS_PASSWORD=password
+            OS_TENANT_NAME=000001
+            # Run 'cinder' for both 'dfw' and 'ord'
+            meta=['dfw', 'ord']
+            # The command to run for this section
             cmd=cinder
 
-            [prod]
-            # Command to populate additional environment variables
-            # Great for impersonating customers!
-            env_cmd=get-customer-auth ${OS_AUTH_URL} ${opt.options}
-            # Run the 'cmd' once for each of these environments
-            meta=['dfw', 'ord']
+            [lon-cinder]
+            OS_AUTH_URL=https://lon.identity.api.rackspacecloud.com
+            OS_USERNAME=username
+            OS_PASSWORD=password
+            OS_TENANT_NAME=000001
+            OS_REGION_NAME=LON
+            cmd=cinder
 
             [dfw]
             OS_REGION_NAME=DFW
@@ -64,19 +75,28 @@ class FileFormat(argparse._HelpAction):
             [ord]
             OS_REGION_NAME=ORD
 
-            [lon]
-            OS_AUTH_URL=https://lon.identity.api.rackspacecloud.com
-            OS_REGION_NAME=LON
-
-            [prod-nova]
-            cmd=nova
+            [us-nova]
+            OS_USERNAME=username
+            OS_PASSWORD=password
+            OS_TENANT_NAME=000001
             meta=['dfw', 'ord']
+            cmd=nova
 
-            [staging]
-            USERNAME=myusername
-            TENANT=73331
-            APIKEY=a2a08609c073654e83cd4fa382e09a5a
-            REGION=STAGING
+            [dfw-nova]
+            OS_AUTH_SYSTEM=rackspace
+            OS_REGION_NAME=DFW
+            OS_USERNAME=username
+            OS_PASSWORD=56fbd016277f11e2b9511bcea8800b42
+            OS_TENANT_NAME=000001
+            cmd=cinder
+
+            [dfw-cinder]
+            CINDER_RAX_AUTH=1
+            OS_REGION_NAME=DFW
+            OS_USERNAME=username
+            OS_PASSWORD=56fbd016277f11e2b9511bcea8800b42
+            OS_TENANT_NAME=000001
+            cmd=cinder
         """)
         parser.exit()
 
@@ -122,8 +142,10 @@ class Env(dict):
         fmt = "%{0}s: %s".format(len(max(self.keys(), key=len)))
         return '\n'.join([fmt % (key, value.value) for key, value in self.iteritems()])
 
+
 def green(msg):
     return "\033[92m%s\033[0m" % msg
+
 
 def openFd(file):
     try:
@@ -223,11 +245,14 @@ def main():
     if hubble_args.help and len(other_args) == 0:
         return parser.print_help()
     if hubble_args.env == None:
-        return parser.print_help()
+        print "Environments Configured: %s" % ",".join(readConfigs().sections())
+        print "See --help for usage"
+        return 1
     if hubble_args.help:
         other_args.append('--help')
 
     # TODO: allow invocation detection (ln -s /usr/bin/cinder /usr/bin/hubble)
+    # TODO: Warn about duplicate sections in the config
 
     try:
         # Read environment values from config files
