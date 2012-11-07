@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 from subprocess import check_output, CalledProcessError, Popen
-from ConfigParser import NoSectionError
+from ConfigParser import NoSectionError, NoOptionError
 import ConfigParser
 import collections
 import argparse
@@ -88,7 +88,7 @@ class FileFormat(argparse._HelpAction):
             OS_USERNAME=username
             OS_PASSWORD=56fbd016277f11e2b9511bcea8800b42
             OS_TENANT_NAME=000001
-            cmd=cinder
+            cmd=nova
 
             [dfw-cinder]
             CINDER_RAX_AUTH=1
@@ -102,7 +102,13 @@ class FileFormat(argparse._HelpAction):
 
 
 class Env(dict):
+    """ A dict() collection of Pair() objects """
+
     class Pair():
+        """
+        Pair object that knows if the key=value should be
+        exported to the environment or not
+        """
         def __init__(self, value='', export=''):
             self.value = value
             self.export = export
@@ -111,23 +117,42 @@ class Env(dict):
             return "Pair('%s', %s)" % (self.value, self.export)
 
     def set(self, key, value, export=True):
+        """ Sets the value with a Pair() """
         self[key] = self.Pair(value, export)
 
+    def delete(self, key):
+        """ A safe delete """
+        try:
+            del self[key]
+        except KeyError:
+            pass
+
     def add(self, envs):
+        """ Adds or removes items in the dict 'envs' to the collection """
         for key, value in envs.iteritems():
+            # if the value is empty
+            if empty(value):
+                # Delete the key from the env 
+                self.delete(key)
+            # else add it
             self.set(key, value, key.isupper())
 
     def eval(self):
+        """ Exapand all the ${variable} signatures in the collection """
         for key, item in self.iteritems():
             self[key].value = self.expandVar(item.value)
         return self
 
     def expandVar(self, value):
+        """ Find a ${some_var} signature and expand it """
         result = value
+        # Find all the ${...}
         for match in re.finditer("\$\{\S+\}", value):
             try:
+                # Extract the variable name from ${...}
                 var = match.group(0)
                 key = var[2:-1]
+                # Replace the entire ${...} sequence with the value named
                 result = str.replace(result, var, self.get(key).value)
             except AttributeError:
                 raise RuntimeError("no such environment variable "
@@ -135,19 +160,31 @@ class Env(dict):
         return result
 
     def toDict(self):
-        return dict([(key, value.value) for key, value in self.iteritems()])
+        """
+        Convert the entire collection of Pair() objects to a
+        dict({'key': str()}) only where export == True
+        """
+        return dict([(key, value.value) for key, value in self.iteritems() if value.export])
 
     def __repr__(self):
+        """ Pretty print the collection """
         # Calculate the max length of any key, and indent by that amount
         fmt = "%{0}s: %s".format(len(max(self.keys(), key=len)))
         return '\n'.join([fmt % (key, value.value) for key, value in self.iteritems()])
 
 
+def empty(value):
+    """ Return true if 'value' only has spaces or is empty """
+    return re.match('^(|\s*)$', value) is not None
+
+
 def green(msg):
+    """ ASCII encode the string with green """
     return "\033[92m%s\033[0m" % msg
 
 
 def openFd(file):
+    """ Open the file if possible, else return None """
     try:
         return open(file)
     except IOError:
@@ -155,6 +192,7 @@ def openFd(file):
 
 
 def readConfigs(files=None):
+    """ Given a list of file names, return a list of handles to succesfully opened files"""
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
@@ -164,6 +202,7 @@ def readConfigs(files=None):
 
 
 def parseFiles(fds):
+    """ Given a list of file handles, parse all the files with ConfigParser() """
     # Read the config file
     config = ConfigParser.RawConfigParser()
     # Don't transform (lowercase) the key values
@@ -177,6 +216,7 @@ def parseFiles(fds):
 
 
 def getEnvironments(args, config):
+    """ Get the environment collection requested from args.env """
     sections = [args.env]
     results = []
 
@@ -205,19 +245,34 @@ def getEnvironments(args, config):
 
 
 def toDict(string):
+    """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
     return dict([[i.strip() for i in line.split('=', 1)]
             for line in string.rstrip().split('\n')])
 
 
 def run(cmd):
+    """ Parse the output from the command passed into a dict({'key': 'value'}) """
     # don't attempt to run an empty command
-    if re.match('^(|\s*)$', cmd):
+    if empty(cmd):
         return {}
     return toDict(check_output(cmd, shell=True))
 
 
+def cmdPath(cmd, conf):
+    """ Find the 'cmd' in the config, or default to /usr/bin/'cmd' """
+    basename = os.path.basename(cmd)
+    try:
+        return conf.get('hubble-commands', basename)
+    except NoSectionError:
+        log.warning("Missing [hubble-commands] section in config")
+    except NoOptionError:
+        log.debug("'%s' not found in [hubble-commands] section" % basename)
+        return "/usr/bin/%s" % basename
+
+
 def main():
     logging.basicConfig(format='-- %(message)s')
+    log.setLevel(logging.CRITICAL)
     parser = argparse.ArgumentParser(add_help=False,
          formatter_class=argparse.RawDescriptionHelpFormatter,
          description = textwrap.dedent("""\
@@ -242,35 +297,46 @@ def main():
     hubble_args, other_args = parser.parse_known_args()
 
     # Do this so we pass along the -h to cinder or nova if we are impersonating
-    if hubble_args.help and len(other_args) == 0:
+    if hubble_args.help and (hubble_args.env is None):
         return parser.print_help()
-    if hubble_args.env == None:
+    if hubble_args.env is None:
         print "Environments Configured: %s" % ",".join(readConfigs().sections())
         print "See --help for usage"
         return 1
     if hubble_args.help:
         other_args.append('--help')
 
-    # TODO: allow invocation detection (ln -s /usr/bin/cinder /usr/bin/hubble)
-    # TODO: Warn about duplicate sections in the config
+    # Set our log level
+    if hubble_args.debug:
+        log.setLevel(logging.DEBUG)
 
     try:
+        conf = readConfigs()
         # Read environment values from config files
-        environments = getEnvironments(hubble_args, readConfigs())
+        environments = getEnvironments(hubble_args, conf)
         for env in environments:
+            # Populate environment vars by running opt_cmd
+            # if -o was passed on the commandline
             if hubble_args.options:
                 if 'opt_cmd' not in env:
                     raise RuntimeError("provided --options, but 'opt_cmd' is not defined in"
                             " '%s' section" % env['section'].value)
                 env.add(run(env['opt_cmd'].value))
 
+            # Populate environment vars by running the env_cmd if it exists
             if 'env_cmd' in env:
-                # run the env command
                 env.add(run(env['env_cmd'].value))
 
+            # If querying multiple environments, display the env name
             if len(environments) != 1 or hubble_args.debug:
                 print "-- [%s] --" % green(env['section'].value)
 
+            # If our invocation name is not 'hubble'
+            if not sys.argv[0].endswith('hubble'):
+                # Use the invocation name as our 'cmd'
+                env.add({'cmd': cmdPath(sys.argv[0], conf)})
+
+            # At this point we should know our 'cmd' to run
             if 'cmd' not in env:
                 raise RuntimeError("Please specify a 'cmd' somewhere in your config")
 
@@ -278,22 +344,29 @@ def main():
             # the /v2.0 version endpoint. So we must specify v2.0 here
             env['OS_AUTH_URL'].value = env['OS_AUTH_URL'].value + "/v2.0"
 
+            # If --debug; print out our env config and pass along the --debug arg
             if hubble_args.debug:
                 print "%r\n" % env
                 env.add({'CINDERCLIENT_DEBUG': '1'})
                 other_args.insert(0, '--debug')
 
-            # Grab a copy of the local environment and inject our environment
+            # Grab a copy of the local environment and inject it into our environment
             environ = os.environ.copy()
             environ.update(env.toDict())
-            # Run the requested command for each environment
-            p = Popen([env['cmd'].value] + other_args,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                env=environ)
-            p.wait()
+
+            try:
+                # Run the requested command
+                p = Popen([env['cmd'].value] + other_args,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    env=environ)
+                # Wait for the command to complete
+                p.wait()
+
+            except OSError, e:
+                raise RuntimeError("exec failed '%s' - %s" % (env['cmd'].value, e))
             print "\n",
 
     except (RuntimeError, CalledProcessError, NoSectionError), e:
-        log.error(e)
+        log.critical(e)
         return 1

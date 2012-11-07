@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 
-from hubble.shell import getEnvironments, Env, run, toDict, parseFiles
+from hubble.shell import getEnvironments, Env, run, toDict, parseFiles, empty
 from StringIO import StringIO
 import unittest
 import argparse
@@ -32,6 +32,7 @@ class TestEnv(unittest.TestCase):
         env = Env()
         env.set('first', 'Derrick')
         env.set('last', 'Wippler')
+        env.set('no-export', 'wat', export=False)
         self.assertEquals(env.toDict(), {'first': 'Derrick', 'last': 'Wippler'})
 
     def test_getEnvironments(self):
@@ -53,6 +54,14 @@ class TestEnv(unittest.TestCase):
 
         self.assertIn('FIRST', env[0])
         self.assertIn('last', env[0])
+
+
+class TestHubble(unittest.TestCase):
+    def test_empty(self):
+        self.assertEquals(empty(""), True)
+        self.assertEquals(empty("1"), False)
+        self.assertEquals(empty("   "), True)
+        self.assertEquals(empty("   r"), False)
 
     def test_toDict(self):
         self.assertEquals(toDict("key=value\nfoo=bar\n"), {'key': 'value', 'foo': 'bar'})
