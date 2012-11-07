@@ -131,7 +131,7 @@ $ hubble swiftly-staging get /
 
 ```
 
-# But I don't want to store my passwords in plain text!
+## But I don't want to store my passwords in plain text!
 You can use a third party script (comming soon) to retrieve passwords out of a keyring (like OSX Keychain)
 Just add the ``env-cmd`` to a section in your ``.hubblerc`` file like so.
 ```
@@ -140,8 +140,8 @@ OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
 OS_REGION_NAME=USA
 env-cmd=keyring-command --get ${section} 
 ```
-${section} will get expanded to the section you the ``env-cmd`` is in. You also have access to any other variables
-available in the section. For example you could key off of the OS_AUTH_URL to get your credentials
+${section} will get expanded to the section you defined the ``env-cmd`` in. You also have access to any other variables
+available in the section. For example you could key off of the $OS_AUTH_URL to get your credentials
 ```
 [prod]
 OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
@@ -155,13 +155,13 @@ KEY=VALUE
 key=value
 ```
 Each variable must be separated by a new line '\n'. As an example the following is a valid
-``env-cmd``` that will add a variable 'FOO' to the environment ``env-cmd=echo 'FOO=BAR' ``
+``env-cmd`` that will add a variable 'FOO' to the environment ``env-cmd=echo 'FOO=BAR' ``
 
-# What if I want to optionally execute an external script? (For impersonating customers!)
+## What if I want to optionally execute an external script? (For impersonating customers!)
 hubble provides an ``-o`` option to pass in additional information on the command line when building an environment.
 If the ``-o`` option is used hubble will look for a ``opt-cmd`` in the selected section defined in ```.hubblerc```
 
-As an example, take the following [prod] sections
+As an example, take the following [prod] section
 ```
 [prod]
 OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
@@ -178,7 +178,7 @@ or with a customers credentials
 nova prod -o cust-user-name list
 ```
 
-# How about running a command accross multiple environments?
+## How about running a command across multiple environments?
 You can define a section in ```~/.hubblerc``` as a meta section. 
 The meta section tells hubble to source all the environment variables in the current
 section, then source and run a command for each section listed in the meta list.
