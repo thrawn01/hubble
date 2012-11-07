@@ -46,11 +46,11 @@ class FileFormat(argparse._HelpAction):
 
             # The output from this command gets sourced
             # into the environment
-            env_cmd=echo 'SOME_SCRIPT_DEFINED_VAR=1'
+            env-cmd=echo 'SOME_SCRIPT_DEFINED_VAR=1'
 
-            # Same as the 'env_cmd' but only when the
+            # Same as the 'env-cmd' but only when the
             # -o option is used
-            opt_cmd=rax-auth ${OS_AUTH_URL} ${opt.options}
+            opt-cmd=rax-auth ${OS_AUTH_URL} ${opt.options}
 
             [us-cinder]
             OS_USERNAME=username
@@ -286,7 +286,7 @@ def main():
     parser.add_argument('env', nargs='?', metavar='<ENV>',
             help="The section in ~/.hubblerc to use")
     parser.add_argument('-o', '--options',
-            help="Optional argument to be passed to the 'opt_cmd'")
+            help="Optional argument to be passed to the 'opt-cmd'")
     parser.add_argument('--file-format', action=FileFormat,
             help="Show an example ~/.hubblerc")
     parser.add_argument('-h', '--help', action='store_true',
@@ -315,17 +315,17 @@ def main():
         # Read environment values from config files
         environments = getEnvironments(hubble_args, conf)
         for env in environments:
-            # Populate environment vars by running opt_cmd
+            # Populate environment vars by running opt-cmd
             # if -o was passed on the commandline
             if hubble_args.options:
-                if 'opt_cmd' not in env:
-                    raise RuntimeError("provided --options, but 'opt_cmd' is not defined in"
+                if 'opt-cmd' not in env:
+                    raise RuntimeError("provided --options, but 'opt-cmd' is not defined in"
                             " '%s' section" % env['section'].value)
-                env.add(run(env['opt_cmd'].value))
+                env.add(run(env['opt-cmd'].value))
 
-            # Populate environment vars by running the env_cmd if it exists
-            if 'env_cmd' in env:
-                env.add(run(env['env_cmd'].value))
+            # Populate environment vars by running the env-cmd if it exists
+            if 'env-cmd' in env:
+                env.add(run(env['env-cmd'].value))
 
             # If querying multiple environments, display the env name
             if len(environments) != 1 or hubble_args.debug:
