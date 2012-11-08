@@ -196,9 +196,26 @@ cmd=/usr/bin/cinder
 ```
 Now run the following, and hubble will always use the 'development' environment
 ```
-cd ~/dev
-hubble list
+$ cd ~/dev
+$ hubble list
 ```
+If you have a Invocation Discovery configuration, you can invoke your command
+of choice and the default environment will be used. The use of hubble in this configuration
+is completely transparent!
+```
+$ cd ~/dev
+$ nova list
++--------------------------------------+-------------+--------+----------------
+| ID                                   | Name        | Status | Networks
++--------------------------------------+-------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | devel-box   | ACTIVE | public=10.26.18
++--------------------------------------+-------------+--------+----------------
+$ swiftly get /
+/devel-box-files
+/images
+/src
+```
+
 *NOTE:* One side effect of using ``default-env`` is that you cannot get to hubble's ``-h`` help option.
 Hubble will always pass along the ``-h`` to the command defined by the default environment (In the above case, cinder)
 
