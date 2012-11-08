@@ -1,5 +1,6 @@
 # Introduction
-*hubble* is an environment variable manager for tools like cinderclient, novaclient, swiftclient and swiftly that rely on environment variables for configuration.
+*hubble* is an environment variable manager for tools like cinderclient, novaclient,
+swiftclient and swiftly that rely on environment variables for configuration.
 
 # Installation
 ```
@@ -8,14 +9,21 @@ cd hubble
 python setup.py install
 ```
 
-# What do now?
-Say you have 2 environments, one is production, the other is staging. Both environments have swift and nova! What do you do?
+# Usage
+To use hubble, you must define some environments in the config file ``~/.hubblerc``.
+Each environment is given a name followed by the variables that will be populated
+into the environment when that environment is chosen from the command line
 
-## Option 1 - Invocation (Recommended)
-Create a ``~/.hubblerc`` file
+Hubble has 2 modes of usage, Invocation Discovery and Command Configuration
+
+## Invocation Discovery (Recommended)
+With Invocation Discovery hubble chooses the command it will run by inspecting
+the name of the program it was invoked as.
+
+The following is an example with two environments *prod* and *staging*
 ```
 [hubble]
-# Variables that are defined for all sections
+# Variables defined here are included in all environments
 OS_AUTH_URL=https://production.auth.thrawn01.com
 OS_SERVICE_NAME=cloudserversOpenStack
 OS_VERSION=2.0
@@ -45,20 +53,24 @@ OS_TENANT_NAME=000001
 OS_REGION_NAME=USA
 ```
 
-Now create a local directory in your path and link hubble to the commands you want to use.
+Now create a local directory in your path and link hubble to the commands
+you want to use. 
+
 ```
 mkdir ~/bin
 export PATH="~/bin;$PATH"
 ln -s /usr/bin/hubble ~/bin/nova
-ln -s /usr/bin/hubble ~/bin/cinder
 ln -s /usr/bin/hubble ~/bin/swiftly
 ```
+When hubble is executed, it will inspect the name it was invoked as (in 
+this case the linked name) and attempt to execute *that* name as the command.
+If executables for nova and swiftly are installed in ``/usr/bin``; Your done!
 
-If actual executables for nova, cinder and swiftly are installed in ``/usr/bin`` Your done! You can now execute the following.
+You can now type the following
 ```
 $ nova prod list
 +--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks                                                                            |
+| ID                                   | Name         | Status | Networks
 +--------------------------------------+--------------+--------+----------------
 | 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
 +--------------------------------------+--------------+--------+----------------
@@ -68,21 +80,46 @@ $ swiftly staging get /
 /images
 /src
 
+
 ```
-### For executables in non-standard locations (like virtualenv)
-Add the following section to your ``~/.hubblerc`` file. This tells hubble where to look when executing the client
+### Executables in non-standard locations (like virtualenv)
+Often commands to be executed are not located in ``/usr/bin`` or you don't want to
+replace the original command with one linked to ``hubble``. In this case hubble allows
+you to tell it what command should be called dependent upon the invocation name
+
+In the following example we have *hubble*, *nova* and *cinder* installed in a local virtualenv.
+Here we don't want to override the use of ``nova`` so we create a new link called 
+``supernova`` and tell ``hubble`` when it sees an invocation as ``supernova`` run the 
+``nova`` command
+
 ```
+# Add the following section to your ~/.hubblerc file.
 [hubble-commands]
 swiftly=/home/username/virtualenv/python/bin/swiftly
-nova=/home/username/virtualenv/python/bin/nova
+supernova=/home/username/virtualenv/python/bin/nova
 cinder=/home/username/virtualenv/python/bin/cinder
+
+# Now create a link for supernova
+$ ln -s /home/username/virtualenv/python/bin/hubble ~/bin/supernova
+
+# Run hubble as Supernova
+$ supernova prod list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
 ```
 
-## Option 2 - Define command specific sections
-Create a ``~/.hubblerc`` file
+## Command Configuration
+With Command Configuration we use the ``~/.hubblerc`` sections to define what command 
+should be executed when ``hubble`` runs
+
+In the following example we create two config sections for each environment. One for the 
+``nova`` command and the other for the ``swiftly`` command
 ```
 [hubble]
-# Variables that are defined for all sections
+# Variables defined here are included in all environments
 OS_AUTH_URL=https://production.auth.thrawn01.com
 OS_SERVICE_NAME=cloudserversOpenStack
 OS_VERSION=2.0
@@ -115,11 +152,12 @@ SWIFTLY_AUTH_USER=prod-swift-user
 SWIFTLY_AUTH_KEY=prod-swift-key
 cmd=/usr/bin/swiftly
 ```
+
 You can now execute the following.
 ```
 $ hubble nova-prod list
 +--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks                                                                            |
+| ID                                   | Name         | Status | Networks
 +--------------------------------------+--------------+--------+----------------
 | 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
 +--------------------------------------+--------------+--------+----------------
@@ -131,16 +169,49 @@ $ hubble swiftly-staging get /
 
 ```
 
+## Directory specific configuration
+Hubble supports a directory-scoped configuration. For instance, if you are in a development
+directory you may want ``nova`` and ``swift`` commands to use a specific environment
+by default, (perhaps a development environment) or have access to environments you should 
+only access from a specific directory.
+
+To support this, you can create a ``.hubblerc`` file in the local directory. Hubble will
+read this file during invocation and overide any global configuration with the local one.
+
+In addition you can set a *default* environment when none is found on the command line. To do this,
+you must define ``default-env`` in the ``[hubble]`` section of the config. 
+
+For example, create a file called ``.hubblerc`` in the directory called ``~/dev``
+```
+[hubble]
+default-env=development
+
+[development]
+OS_AUTH_URL=https://development.auth.thrawn01.org/v1.0
+OS_USERNAME=dev-user
+OS_PASSWORD=dev-password
+OS_TENANT_NAME=000001
+OS_REGION_NAME=USA
+cmd=/usr/bin/cinder
+```
+Now run the following, and hubble will always use the 'development' environment
+```
+cd ~/dev
+hubble list
+```
+*NOTE:* One side effect of using ``default-env`` is that you cannot get to hubble's ``-h`` help option.
+Hubble will always pass along the ``-h`` to the command defined by the default environment (In the above case, cinder)
+
 ## But I don't want to store my passwords in plain text!
-You can use a third party script (comming soon) to retrieve passwords out of a keyring (like OSX Keychain)
-Just add the ``env-cmd`` to a section in your ``.hubblerc`` file like so.
+You can use a third party script (coming soon) to retrieve passwords out of a keyring (like OSX Keychain)
+Just add the ``env-cmd`` to an environment in your ``~/.hubblerc`` like so.
 ```
 [prod]
 OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
 OS_REGION_NAME=USA
 env-cmd=keyring-command --get ${section} 
 ```
-${section} will get expanded to the section you defined the ``env-cmd`` in. You also have access to any other variables
+``${section}`` will get expanded to the section you defined the ``env-cmd`` in. You also have access to any other variables
 available in the section. For example you could key off of the $OS_AUTH_URL to get your credentials
 ```
 [prod]
@@ -154,7 +225,7 @@ The only requirement for the ``env-cmd`` is that it must output the variables in
 KEY=VALUE
 key=value
 ```
-Each variable must be separated by a new line '\n'. As an example the following is a valid
+A new line ‘\n’ must separate each variable. As an example the following is a valid
 ``env-cmd`` that will add a variable 'FOO' to the environment ``env-cmd=echo 'FOO=BAR' ``
 
 ## What if I want to optionally execute an external script? (For impersonating customers!)
@@ -167,7 +238,7 @@ As an example, take the following [prod] section
 OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
 OS_REGION_NAME=USA
 env-cmd=keyring-command --auth ${OS_AUTH_URL} --get ${section}
-opt-cmd=get-customer-credentials --auth ${OS_AUTH_URL} --username ${opt.options}
+opt-cmd=get-customer-credentials --auth ${OS_AUTH_URL} --username ${opt.option}
 ```
 With this configuration it is possible to access the prod environment with your credentials
 ```
@@ -181,7 +252,7 @@ nova prod -o cust-user-name list
 ## How about running a command across multiple environments?
 You can define a section in ```~/.hubblerc``` as a meta section. 
 The meta section tells hubble to source all the environment variables in the current
-section, then source and run a command for each section listed in the meta list.
+section, then source and run the command for each section listed in the meta list.
 
 As an example
 ```
@@ -208,15 +279,24 @@ a command for both the chicago and dallas environments
 $ nova usa list
 -- [dallas] --
 +--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks                                                                            |
+| ID                                   | Name         | Status | Networks
 +--------------------------------------+--------------+--------+----------------
 | 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
 +--------------------------------------+--------------+--------+----------------
 
 -- [chicago] --
 +--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks                                                                            |
+| ID                                   | Name         | Status | Networks
 +--------------------------------------+--------------+--------+----------------
 | 6f586a82-2858-11e2-bbfe-e3c8f66fdabb | backup01.org | ACTIVE | public=11.20.16
 +--------------------------------------+--------------+--------+----------------
 ```
+## Complete list of available variables
+* *${section}** - The name of the current environment (useful when using **meta**)
+* **${cmd}** - Name of the command running for this environment
+* **${opt-cmd}** - The value of the optional command for this environment
+* **${env-cmd}** - The value of the env command for this environment
+* **${opt.option}** - The argument passed in via the -o|--option command line argument
+* **${opt.env}** - The environment name passed in as a command line argument
+* **${opt.debug}** - 'True' if --debug was used on the command line else 'False'
+
