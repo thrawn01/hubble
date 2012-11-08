@@ -27,80 +27,6 @@ import os
 log = logging.getLogger(__name__)
 
 
-
-class FileFormat(argparse._HelpAction):
-    def __call__(self, parser, *args, **kwargs):
-        print textwrap.dedent("""\
-            [hubble]
-            # Variables that are defined for all sections
-            OS_AUTH_URL=https://identity.api.rackspacecloud.com
-            CINDER_VOLUME_SERVICE_NAME=cloudBlockStorage
-            OS_SERVICE_NAME=cloudserversOpenStack
-            CINDERCLIENT_INSECURE=1
-            OS_VERSION=2.0
-            OS_NO_CACHE=1
-
-            # Specify the command to run for all
-            # sections, unless redefined in a section
-            cmd=nova
-
-            # The output from this command gets sourced
-            # into the environment
-            env-cmd=echo 'SOME_SCRIPT_DEFINED_VAR=1'
-
-            # Same as the 'env-cmd' but only when the
-            # -o option is used
-            opt-cmd=rax-auth ${OS_AUTH_URL} ${opt.options}
-
-            [us-cinder]
-            OS_USERNAME=username
-            OS_PASSWORD=password
-            OS_TENANT_NAME=000001
-            # Run 'cinder' for both 'dfw' and 'ord'
-            meta=['dfw', 'ord']
-            # The command to run for this section
-            cmd=cinder
-
-            [lon-cinder]
-            OS_AUTH_URL=https://lon.identity.api.rackspacecloud.com
-            OS_USERNAME=username
-            OS_PASSWORD=password
-            OS_TENANT_NAME=000001
-            OS_REGION_NAME=LON
-            cmd=cinder
-
-            [dfw]
-            OS_REGION_NAME=DFW
-
-            [ord]
-            OS_REGION_NAME=ORD
-
-            [us-nova]
-            OS_USERNAME=username
-            OS_PASSWORD=password
-            OS_TENANT_NAME=000001
-            meta=['dfw', 'ord']
-            cmd=nova
-
-            [dfw-nova]
-            OS_AUTH_SYSTEM=rackspace
-            OS_REGION_NAME=DFW
-            OS_USERNAME=username
-            OS_PASSWORD=56fbd016277f11e2b9511bcea8800b42
-            OS_TENANT_NAME=000001
-            cmd=nova
-
-            [dfw-cinder]
-            CINDER_RAX_AUTH=1
-            OS_REGION_NAME=DFW
-            OS_USERNAME=username
-            OS_PASSWORD=56fbd016277f11e2b9511bcea8800b42
-            OS_TENANT_NAME=000001
-            cmd=cinder
-        """)
-        parser.exit()
-
-
 class Env(dict):
     """ A dict() collection of Pair() objects """
 
@@ -173,6 +99,15 @@ class Env(dict):
         return '\n'.join([fmt % (key, value.value) for key, value in self.iteritems()])
 
 
+class SafeConfigParser(ConfigParser.RawConfigParser):
+    """ Simple subclass to add the safeGet() method """
+    def safeGet(self, section, key):
+        try:
+            return ConfigParser.RawConfigParser.get(self, section, key)
+        except (NoSectionError, NoOptionError):
+            return None
+
+
 def empty(value):
     """ Return true if 'value' only has spaces or is empty """
     return re.match('^(|\s*)$', value) is not None
@@ -198,13 +133,13 @@ def readConfigs(files=None):
     if not any([os.path.exists(rc) for rc in files]):
         raise RuntimeError("Unable to find config files in these locations [%s] "
             "(See --help for file format)" % ",".join(files))
-    return parseFiles([openFd(file) for file in files])
+    return parseConfigs([openFd(file) for file in files])
 
 
-def parseFiles(fds):
+def parseConfigs(fds):
     """ Given a list of file handles, parse all the files with ConfigParser() """
     # Read the config file
-    config = ConfigParser.RawConfigParser()
+    config = SafeConfigParser()
     # Don't transform (lowercase) the key values
     config.optionxform = str
     # Read all the file handles passed
@@ -215,15 +150,15 @@ def parseFiles(fds):
     return config
 
 
-def getEnvironments(args, config):
+def getEnvironments(args, choice, config):
     """ Get the environment collection requested from args.env """
-    sections = [args.env]
+    sections = [choice]
     results = []
 
     # Get the default variables
     conf = dict(config.items('hubble'))
-    # Merge in the requested section
-    conf.update(dict(config.items(args.env)))
+    # Merge in the requested environment
+    conf.update(dict(config.items(choice)))
     # If requested section is a meta section
     if 'meta' in conf:
         # Evaluate the list of sections this is a meta for
@@ -270,37 +205,52 @@ def cmdPath(cmd, conf):
         return "/usr/bin/%s" % basename
 
 
+def evalArgs(conf, parser):
+    env = conf.safeGet('hubble', 'default-env')
+    # If no default environment set, look for an
+    # environment choice on the command line
+    if not env:
+        parser.add_argument('env', nargs='?', metavar='<ENV>',
+                help="The environment defined in ~/.hubblerc to use")
+        (arg1, arg2) = parser.parse_known_args()
+        return (arg1, arg2, arg1.env)
+    # Return the args with the default environment choice
+    (arg1, arg2) = parser.parse_known_args()
+    return (arg1, arg2, env)
+
+
 def main():
     logging.basicConfig(format='-- %(message)s')
     log.setLevel(logging.CRITICAL)
     parser = argparse.ArgumentParser(add_help=False,
          formatter_class=argparse.RawDescriptionHelpFormatter,
          description = textwrap.dedent("""\
-            An environment manager for openstack. Can be used with 'novaclient'
-            and 'cinderclient'
+            Hubble - An environment variable manager for tools like
+            cinderclient, novaclient, swiftclient and swiftly that rely
+            on environment variables for configuration.
 
             Use ~/.hubblerc for user wide environments then place a
             .hubblerc in a local directory to overide ~/.hubblerc
             """))
-
-    parser.add_argument('env', nargs='?', metavar='<ENV>',
-            help="The section in ~/.hubblerc to use")
-    parser.add_argument('-o', '--options',
-            help="Optional argument to be passed to the 'opt-cmd'")
-    parser.add_argument('--file-format', action=FileFormat,
-            help="Show an example ~/.hubblerc")
+    parser.add_argument('-o', '--option',
+            help="an argument to pass to the opt-cmd")
     parser.add_argument('-h', '--help', action='store_true',
             help="show this help message and exit")
     parser.add_argument('-d', '--debug', action='store_true',
             help="Adds CINDERCLIENT_DEBUG=1 to the environment and passes"
             " --debug to selected command")
-    hubble_args, other_args = parser.parse_known_args()
 
-    # Do this so we pass along the -h to cinder or nova if we are impersonating
-    if hubble_args.help and (hubble_args.env is None):
+    # Read the configs
+    conf = readConfigs()
+    # Evaluate the command line arguments and return our args
+    # the commands args and the environment choice the user made
+    hubble_args, other_args, choice = evalArgs(conf, parser)
+    # Do this so we pass along the -h to the command
+    # if we are using invocation discovery
+    if hubble_args.help and (choice is None):
         return parser.print_help()
-    if hubble_args.env is None:
-        print "Environments Configured: %s" % ",".join(readConfigs().sections())
+    if choice is None:
+        print "Environments Configured: %s" % ",".join(conf.sections())
         print "See --help for usage"
         return 1
     if hubble_args.help:
@@ -311,15 +261,14 @@ def main():
         log.setLevel(logging.DEBUG)
 
     try:
-        conf = readConfigs()
         # Read environment values from config files
-        environments = getEnvironments(hubble_args, conf)
+        environments = getEnvironments(hubble_args, choice, conf)
         for env in environments:
             # Populate environment vars by running opt-cmd
             # if -o was passed on the commandline
-            if hubble_args.options:
+            if hubble_args.option:
                 if 'opt-cmd' not in env:
-                    raise RuntimeError("provided --options, but 'opt-cmd' is not defined in"
+                    raise RuntimeError("provided -o|--option, but 'opt-cmd' is not defined in"
                             " '%s' section" % env['section'].value)
                 env.add(run(env['opt-cmd'].value))
 

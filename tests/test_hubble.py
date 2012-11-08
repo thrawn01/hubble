@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 
-from hubble.shell import getEnvironments, Env, run, toDict, parseFiles, empty
+from hubble.shell import getEnvironments, Env, run, toDict, parseConfigs, empty
 from StringIO import StringIO
 import unittest
 import argparse
@@ -39,7 +39,7 @@ class TestEnv(unittest.TestCase):
         parser = argparse.ArgumentParser()
         parser.add_argument('env')
         parser.add_argument('--user', default='', required=False)
-        args = parser.parse_args(['name'])
+        args = parser.parse_args(['blah'])
 
         file = StringIO("[hubble]\n"
                         "name=My name is ${FIRST} ${last}\n"
@@ -48,7 +48,7 @@ class TestEnv(unittest.TestCase):
                         "[name]\n"
                         "FIRST=Derrick\n"
                         "last=Wippler\n")
-        env = getEnvironments(args, parseFiles([file]))
+        env = getEnvironments(args, 'name', parseConfigs([file]))
         self.assertIn('name', env[0])
         self.assertEquals(env[0]['name'].value, 'My name is Derrick Wippler')
 
