@@ -58,6 +58,7 @@ class TestEnv(unittest.TestCase):
 
 class TestHubble(unittest.TestCase):
     def test_empty(self):
+        self.assertEquals(empty(None), True)
         self.assertEquals(empty(""), True)
         self.assertEquals(empty("1"), False)
         self.assertEquals(empty("   "), True)
