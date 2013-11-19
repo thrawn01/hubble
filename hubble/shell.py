@@ -110,7 +110,7 @@ class SafeConfigParser(ConfigParser.RawConfigParser):
 
 def empty(value):
     """ Return true if 'value' only has spaces or is empty """
-    return re.match('^(|\s*)$', value) is not None
+    return value is None or re.match('^(|\s*)$', value) is not None
 
 
 def green(msg):
@@ -202,7 +202,7 @@ def cmdPath(cmd, conf):
         log.warning("Missing [hubble-commands] section in config")
     except NoOptionError:
         log.debug("'%s' not found in [hubble-commands] section" % basename)
-        return "/usr/bin/%s" % basename
+    return "/usr/bin/%s" % basename
 
 
 def evalArgs(conf, parser):
@@ -313,6 +313,10 @@ def main():
                 p.wait()
 
             except OSError, e:
+                if e.errno == 2:
+                    print "-- No such executable '%s', you must specify the executable "\
+                        "in the [hubble-commands] section of the config (See README)"\
+                        % env['cmd'].value
                 raise RuntimeError("exec failed '%s' - %s" % (env['cmd'].value, e))
             print "\n",
 
