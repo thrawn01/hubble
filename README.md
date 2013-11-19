@@ -3,11 +3,15 @@
 swiftclient and swiftly that rely on environment variables for configuration.
 
 # Installation
+## GIT
 ```
 git clone git://github.com/thrawn01/hubble.git
 cd hubble
 python setup.py install
 ```
+## PIP
+```
+pip install git+git://github.com/thrawn01/hubble.git@master
 
 # Usage
 To use hubble, you must define some environments in the config file ``~/.hubblerc``.
