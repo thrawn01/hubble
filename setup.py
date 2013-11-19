@@ -23,6 +23,7 @@ setuptools.setup(
     description='openstack environment manager',
     license='Apache License, Version 2.0',
     url='https://github.com/thrawn01/hubble',
+    packages=['hubble'],
     entry_points={
         'console_scripts': [
             'hubble = hubble.shell:main',

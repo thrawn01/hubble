@@ -1,0 +1,9 @@
+*.pyc
+*.pyo
+*.so
+.svn
+target/
+.class/
+*.egg-info/
+dist/
+build/
