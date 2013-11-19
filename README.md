@@ -12,6 +12,7 @@ python setup.py install
 ## PIP
 ```
 pip install git+git://github.com/thrawn01/hubble.git@master
+```
 
 # Usage
 To use hubble, you must define some environments in the config file ``~/.hubblerc``.
