@@ -154,9 +154,14 @@ def getEnvironments(args, choice, config):
     """ Get the environment collection requested from args.env """
     sections = [choice]
     results = []
+    conf = {}
 
-    # Get the default variables
-    conf = dict(config.items('hubble'))
+    try:
+        # Get the default variables if exists
+        conf = dict(config.items('hubble'))
+    except NoSectionError:
+        pass
+
     # Merge in the requested environment
     conf.update(dict(config.items(choice)))
     # If requested section is a meta section
@@ -234,6 +239,8 @@ def main():
             """))
     parser.add_argument('-o', '--option',
             help="an argument to pass to the opt-cmd")
+    parser.add_argument('-e', '--execute', metavar='COMMAND',
+            help="execute a command in the specified environment")
     parser.add_argument('-h', '--help', action='store_true',
             help="show this help message and exit")
     parser.add_argument('-d', '--debug', action='store_true',
@@ -284,6 +291,10 @@ def main():
             if not sys.argv[0].endswith('hubble'):
                 # Use the invocation name as our 'cmd'
                 env.add({'cmd': cmdPath(sys.argv[0], conf)})
+
+            if hubble_args.execute:
+                # Use the command provided
+                env.add({'cmd': hubble_args.execute})
 
             # At this point we should know our 'cmd' to run
             if 'cmd' not in env:
