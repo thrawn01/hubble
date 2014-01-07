@@ -39,6 +39,9 @@ class Env(dict):
             self.value = value
             self.export = export
 
+        def endswith(self, needle):
+            return self.value.endswith(needle)
+
         def __repr__(self):
             return "Pair('%s', %s)" % (self.value, self.export)
 
@@ -300,14 +303,12 @@ def main():
             if 'cmd' not in env:
                 raise RuntimeError("Please specify a 'cmd' somewhere in your config")
 
-            # FIXME: when using rackspace auth cinder doesn't know how to discover
-            # the /v2.0 version endpoint. So we must specify v2.0 here
-            env['OS_AUTH_URL'].value = env['OS_AUTH_URL'].value + "/v2.0"
-
             # If --debug; print out our env config and pass along the --debug arg
             if hubble_args.debug:
+                # For cinder client debug
+                if env['cmd'].endswith('cinder'):
+                    env.add({'CINDERCLIENT_DEBUG': '1'})
                 print "%r\n" % env
-                env.add({'CINDERCLIENT_DEBUG': '1'})
                 other_args.insert(0, '--debug')
 
             # Grab a copy of the local environment and inject it into our environment
