@@ -2,6 +2,10 @@
 *hubble* is an environment variable manager for tools like cinderclient, novaclient,
 swiftclient and swiftly that rely on environment variables for configuration.
 
+It is inspired by the most excellent supernova written by Major Haden
+(https://github.com/major/supernova/). Imagine hubble as supernova, but
+not just for nova
+
 # Installation
 ## GIT
 ```
@@ -107,7 +111,7 @@ cinder=/home/username/virtualenv/python/bin/cinder
 # Now create a link for supernova
 $ ln -s /home/username/virtualenv/python/bin/hubble ~/bin/supernova
 
-# Run hubble as Supernova
+# Run hubble like Supernova
 $ supernova prod list
 +--------------------------------------+--------------+--------+----------------
 | ID                                   | Name         | Status | Networks
@@ -313,6 +317,31 @@ $ nova usa list
 | 6f586a82-2858-11e2-bbfe-e3c8f66fdabb | backup01.org | ACTIVE | public=11.20.16
 +--------------------------------------+--------------+--------+----------------
 ```
+
+## How about running an arbitrary command?
+When executing remote ssh commands with tools like fabric or dsh the local user
+environment doesn't get sourced which makes running custom scripts that make
+use of CinderClient or NovaClient difficult to run without hard coding
+environment variables. Hubble improves this situation by allowing a minimal
+`.hubblerc` file with the ability to execute arbitrary commands via the command
+line
+
+Here is an example of a minimal `.hubblerc`
+```
+[local]
+OS_AUTH_URL=https://development.auth.thrawn01.org/v1.0
+OS_USERNAME=user
+OS_PASSWORD=password
+OS_TENANT_NAME=000001
+OS_REGION_NAME=USA
+```
+Notice the inclusion of the [hubble] section is optional. With this config we
+can run hubble with our custom command remotely like so
+
+```
+ssh thrawn@my-host.com /usr/bin/hubble local -e /path/to/custom-command
+```
+
 ## Complete list of available variables
 * *${section}** - The name of the current environment (useful when using **meta**)
 * **${cmd}** - Name of the command running for this environment
