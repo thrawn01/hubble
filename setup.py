@@ -27,6 +27,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'hubble = hubble.shell:main',
+            'hubble-keyring = hubble.keys:main',
         ]
     },
     classifiers=[

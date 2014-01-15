@@ -23,6 +23,12 @@ import sys
 import re
 import os
 
+try:
+    # Not everyone needs keyring
+    import keys
+except ImportError:
+    keys = None
+
 
 log = logging.getLogger(__name__)
 
@@ -66,13 +72,13 @@ class Env(dict):
             # else add it
             self.set(key, value, key.isupper())
 
-    def eval(self):
-        """ Exapand all the ${variable} signatures in the collection """
+    def eval(self, section):
+        """ Exapand all the ${variable} directives in the collection """
         for key, item in self.iteritems():
-            self[key].value = self.expandVar(item.value)
+            self[key].value = self.expandVar(section, key, item.value)
         return self
 
-    def expandVar(self, value):
+    def expandVar(self, section, variable, value):
         """ Find a ${some_var} signature and expand it """
         result = value
         # Find all the ${...}
@@ -86,7 +92,25 @@ class Env(dict):
             except AttributeError:
                 raise RuntimeError("no such environment variable "
                                    "'%s' in '%s'" % (key, result))
-        return result
+        # Expand keyring values if any
+        return self.expandKeyringVar(section, variable, result)
+
+    def expandKeyringVar(self, section, variable, value):
+        """ Find 'USE_KEYRING' directives and expand them using the keyring """
+        identifier = value.strip()
+        if identifier.startswith("USE_KEYRING"):
+            if keys is None:
+                raise RuntimeError("found USE_KEYRING for '%s' but python "
+                                   "keyring or getpass modules are not "
+                                   "installed are required for keyring "
+                                   "support" % variable)
+            if identifier == "USE_KEYRING":
+                return keys.get_password(section, variable)
+            else:
+                regex = "USE_KEYRING\[([\x27\x22])(.*)\\1\]"
+                var = re.match(regex, value).group(2)
+                return keys.get_password('global', variable)
+        return value
 
     def toDict(self):
         """
@@ -183,7 +207,7 @@ def getEnvironments(args, choice, config):
         # Add the args to the environment as opt.'<arg_name>'
         env.add(dict(map(lambda i: ("opt.%s" % i[0], str(i[1])), vars(args).items())))
         # Apply var expansion
-        results.append(env.eval())
+        results.append(env.eval(section))
     return results
 
 
