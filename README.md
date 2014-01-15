@@ -344,7 +344,7 @@ ssh thrawn@my-host.com /usr/bin/hubble -e /path/to/custom-command
 ```
 
 ## Complete list of available variables
-* *${section}** - The name of the current environment (useful when using **meta**)
+* **${section}** - The name of the current environment (useful when using **meta**)
 * **${cmd}** - Name of the command running for this environment
 * **${opt-cmd}** - The value of the optional command for this environment
 * **${env-cmd}** - The value of the env command for this environment

@@ -16,6 +16,7 @@
 #   (https://github.com/major/supernova) under the same license
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from hubble.config import validateVariableExists
 import keyring
 import getpass
 
@@ -31,7 +32,7 @@ def main():
         hubble-keyring --set chicago OS_PASSWORD
 
         Set the OS_PASSWORD for USE_KEYRING['my-global-password']
-        hubble-keyring --set global my-global-password
+        hubble-keyring --set my-global-variable-name
     """
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter,
                             description=description)
@@ -40,23 +41,19 @@ def main():
     parser.add_argument('-s', '--set', action='store_true', dest='set_pass',
                         help='stores credentials in keychain storage')
     parser.add_argument('env', help='environment to set the variable in')
-    parser.add_argument('variable', help='variable name to put in keyring')
+    parser.add_argument('variable', help='variable name to put in keyring', nargs='?')
     args = parser.parse_args()
 
     try:
         if args.set_pass:
-            #print "-- Preparing to set a password in the keyring for:"
-            #print "  - Environment  : %s" % args.env
-            #print "  - Variable     : %s" % args.variable
-            #print "\n  If this is correct, enter the corresponding credential"\
-                #" to store in \n  your keyring or press CTRL-D to abort: ",
-
-            # Prompt for a password and catch a CTRL-D
+            password = None
             try:
+                if args.variable:
+                    validateVariableExists(args)
                 password = getpass.getpass('Enter Credential (CTRL-D to abort) > ')
-            except:
-                password = None
-                print
+            except RuntimeError, e:
+                print "-- %s" % str(e)
+                return 1
 
             # Did we get a password from the prompt?
             if not password or len(password) < 1:
@@ -64,8 +61,9 @@ def main():
                 return 1
 
             set_password(args.env, args.variable, password)
-            print "\n-- Successfully stored credentials for '%s' under the " \
-                "hubble service." % args.variable
+            print("\n-- Successfully stored credentials for variable '%s' in"
+                  " environment [%s] under keyring 'hubble'" %
+                  (args.variable, args.env))
             return 0
 
         if args.get_pass:
@@ -80,19 +78,28 @@ def main():
 
 
 def get_password(env, variable):
-    try:
-        return keyring.get_password('hubble', '%s:%s' % (env, variable))
-    except keyring.backend.PasswordSetError, e:
-        raise RuntimeError("Unable to retrieve credentials for %s:%s"
-                           " (try --set)\n-- %s " % (env, variable, str(e)))
+    key = '%s:%s' % (env, variable)
+    # If no variable, the we are getting a global
+    if variable is None:
+        key = '__hubble__'
+    cred = keyring.get_password('hubble', key)
+    if cred is None:
+        raise RuntimeError("No Such variable '%s' in environment [%s]"
+                           " exists in keyring 'hubble' (use hubble-keyring "
+                           "--set)" % (variable, env))
+    return cred
 
 
 def set_password(env, variable, password):
     # Try to store the password
     try:
-        return keyring.set_password('hubble', '%s:%s' % (env, variable),
-                                    password)
-    except keyring.backend.PasswordSetError, e:
-        raise RuntimeError("Unable to store credentials for '%s:%s' under "
-                           "the hubble service - %s" %
+        key = '%s:%s' % (env, variable)
+        # If no variable, the we are setting a global
+        if variable is None:
+            key = '__hubble__'
+        print "key: %s" % key
+        return keyring.set_password('hubble', key, password)
+    except keyring.errors.PasswordSetError, e:
+        raise RuntimeError("Unable to store credentials for variable '%s' in"
+                           " environment [%s] under the hubble service - %s" %
                            (env, variable, str(e)))
