@@ -328,18 +328,19 @@ line
 
 Here is an example of a minimal `.hubblerc`
 ```
-[local]
+[hubble]
 OS_AUTH_URL=https://development.auth.thrawn01.org/v1.0
 OS_USERNAME=user
 OS_PASSWORD=password
 OS_TENANT_NAME=000001
 OS_REGION_NAME=USA
+default-env=local
 ```
 Notice the inclusion of the [hubble] section is optional. With this config we
 can run hubble with our custom command remotely like so
 
 ```
-ssh thrawn@my-host.com /usr/bin/hubble local -e /path/to/custom-command
+ssh thrawn@my-host.com /usr/bin/hubble -e /path/to/custom-command
 ```
 
 ## Complete list of available variables

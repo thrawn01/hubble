@@ -128,11 +128,24 @@ class Env(dict):
 
 class SafeConfigParser(ConfigParser.RawConfigParser):
     """ Simple subclass to add the safeGet() method """
+    def getError(self):
+        return None
+
     def safeGet(self, section, key):
         try:
             return ConfigParser.RawConfigParser.get(self, section, key)
         except (NoSectionError, NoOptionError):
             return None
+
+
+class ErrorConfigParser(SafeConfigParser):
+    """ Simple subclass to inform users of a parse error """
+    def __init__(self, msg):
+        SafeConfigParser.__init__(self)
+        self.msg = msg
+
+    def getError(self):
+        return self.msg
 
 
 def empty(value):
@@ -158,8 +171,8 @@ def readConfigs(files=None):
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
-        raise RuntimeError("Unable to find config files in these locations [%s] "
-            "(See --help for file format)" % ",".join(files))
+        return ErrorConfigParser("Unable to find config files in these"
+                                 " locations [%s]" % ", ".join(files))
     return parseConfigs([openFd(file) for file in files])
 
 
@@ -274,27 +287,33 @@ def main():
             help="Adds CINDERCLIENT_DEBUG=1 to the environment and passes"
             " --debug to selected command")
 
-    # Read the configs
-    conf = readConfigs()
-    # Evaluate the command line arguments and return our args
-    # the commands args and the environment choice the user made
-    hubble_args, other_args, choice = evalArgs(conf, parser)
-    # Do this so we pass along the -h to the command
-    # if we are using invocation discovery
-    if hubble_args.help and (choice is None):
-        return parser.print_help()
-    if choice is None:
-        print "Environments Configured: %s" % ",".join(conf.sections())
-        print "See --help for usage"
-        return 1
-    if hubble_args.help:
-        other_args.append('--help')
-
-    # Set our log level
-    if hubble_args.debug:
-        log.setLevel(logging.DEBUG)
-
     try:
+        # Read the configs
+        conf = readConfigs()
+        # Evaluate the command line arguments and return our args
+        # the commands args and the environment choice the user made
+        hubble_args, other_args, choice = evalArgs(conf, parser)
+        # Do this so we pass along the -h to the command
+        # if we are using invocation discovery
+        if hubble_args.help and (choice is None):
+            return parser.print_help()
+
+        # If there was an error
+        if conf.getError():
+            print conf.getError()
+            return 1
+
+        if choice is None:
+            print "Environments Configured: %s" % ",".join(conf.sections())
+            print "See --help for usage"
+            return 1
+        if hubble_args.help:
+            other_args.append('--help')
+
+        # Set our log level
+        if hubble_args.debug:
+            log.setLevel(logging.DEBUG)
+
         # Read environment values from config files
         environments = getEnvironments(hubble_args, choice, conf)
         for env in environments:
