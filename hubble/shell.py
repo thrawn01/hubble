@@ -41,9 +41,10 @@ class Env(dict):
         Pair object that knows if the key=value should be
         exported to the environment or not
         """
-        def __init__(self, value='', export=''):
+        def __init__(self, value='', section='', export=''):
             self.value = value
             self.export = export
+            self.section = section
 
         def endswith(self, needle):
             return self.value.endswith(needle)
@@ -51,9 +52,9 @@ class Env(dict):
         def __repr__(self):
             return "Pair('%s', %s)" % (self.value, self.export)
 
-    def set(self, key, value, export=True):
+    def set(self, key, value, section, export=True):
         """ Sets the value with a Pair() """
-        self[key] = self.Pair(value, export)
+        self[key] = self.Pair(value, section, export)
 
     def delete(self, key):
         """ A safe delete """
@@ -62,7 +63,11 @@ class Env(dict):
         except KeyError:
             pass
 
-    def add(self, envs):
+    def update(self, envs):
+        for key, pair in envs.iteritems():
+            self[key] = pair
+
+    def add(self, envs, section=None):
         """ Adds or removes items in the dict 'envs' to the collection """
         for key, value in envs.iteritems():
             # if the value is empty
@@ -70,19 +75,19 @@ class Env(dict):
                 # Delete the key from the env 
                 self.delete(key)
             # else add it
-            self.set(key, value, key.isupper())
+            self.set(key, value, section, key.isupper())
 
-    def eval(self, section):
+    def eval(self):
         """ Exapand all the ${variable} directives in the collection """
-        for key, item in self.iteritems():
-            self[key].value = self.expandVar(section, key, item.value)
+        for key, pair in self.iteritems():
+            self[key].value = self.expandVar(key, pair)
         return self
 
-    def expandVar(self, section, variable, value):
+    def expandVar(self, variable, pair):
         """ Find a ${some_var} signature and expand it """
-        result = value
+        result = pair.value
         # Find all the ${...}
-        for match in re.finditer("\$\{\S+\}", value):
+        for match in re.finditer("\$\{\S+\}", pair.value):
             try:
                 # Extract the variable name from ${...}
                 var = match.group(0)
@@ -93,9 +98,9 @@ class Env(dict):
                 raise RuntimeError("no such environment variable "
                                    "'%s' in '%s'" % (key, result))
         # Expand keyring values if any
-        return self.expandKeyringVar(section, variable, result)
+        return self.expandKeyringVar(variable, pair, result)
 
-    def expandKeyringVar(self, section, variable, value):
+    def expandKeyringVar(self, variable, pair, value):
         """ Find 'USE_KEYRING' directives and expand them using the keyring """
         identifier = value.strip()
         if identifier.startswith("USE_KEYRING"):
@@ -105,7 +110,7 @@ class Env(dict):
                                    "installed are required for keyring "
                                    "support" % variable)
             if identifier == "USE_KEYRING":
-                return keys.get_password(section, variable)
+                return keys.get_password(pair.section, variable)
             else:
                 regex = "USE_KEYRING\[([\x27\x22])(.*)\\1\]"
                 var = re.match(regex, value).group(2)
@@ -140,16 +145,16 @@ def getEnvironments(args, choice, config):
     """ Get the environment collection requested from args.env """
     sections = [choice]
     results = []
-    conf = {}
+    conf = Env()
 
     try:
         # Get the default variables if exists
-        conf = dict(config.items('hubble'))
+        conf.add(dict(config.items('hubble')), 'hubble')
     except NoSectionError:
         pass
 
     # Merge in the requested environment
-    conf.update(dict(config.items(choice)))
+    conf.add(dict(config.items(choice)), choice)
     # If requested section is a meta section
     if 'meta' in conf:
         # Evaluate the list of sections this is a meta for
@@ -158,15 +163,15 @@ def getEnvironments(args, choice, config):
     for section in sections:
         env = Env()
         # Add the name of the section
-        env.add({'section': section})
+        env.add({'section': section}, section)
         # Add the choosen section
-        env.add(conf)
+        env.update(conf)
         # Add the env section
-        env.add(dict(config.items(section)))
+        env.add(dict(config.items(section)), section)
         # Add the args to the environment as opt.'<arg_name>'
-        env.add(dict(map(lambda i: ("opt.%s" % i[0], str(i[1])), vars(args).items())))
+        env.add(dict(map(lambda i: ("opt.%s" % i[0], str(i[1])), vars(args).items())), section)
         # Apply var expansion
-        results.append(env.eval(section))
+        results.append(env.eval())
     return results
 
 
