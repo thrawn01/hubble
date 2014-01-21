@@ -158,7 +158,7 @@ def getEnvironments(args, choice, config):
     # If requested section is a meta section
     if 'meta' in conf:
         # Evaluate the list of sections this is a meta for
-        sections = eval(conf['meta'])
+        sections = eval(conf['meta'].value)
 
     for section in sections:
         env = Env()
