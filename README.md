@@ -15,7 +15,7 @@ python setup.py install
 ```
 ## PIP
 ```
-pip install git+git://github.com/thrawn01/hubble.git@master
+pip install git+https://github.com/thrawn01/hubble.git@master
 ```
 
 # Usage
