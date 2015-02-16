@@ -41,7 +41,8 @@ def main():
     parser.add_argument('-s', '--set', action='store_true', dest='set_pass',
                         help='stores credentials in keychain storage')
     parser.add_argument('env', help='environment to set the variable in')
-    parser.add_argument('variable', help='variable name to put in keyring', nargs='?')
+    parser.add_argument('variable', help='variable name to put in keyring',
+                        nargs='?')
     args = parser.parse_args()
 
     try:
@@ -50,7 +51,8 @@ def main():
             try:
                 if args.variable:
                     validateVariableExists(args)
-                password = getpass.getpass('Enter Credential (CTRL-D to abort) > ')
+                password = getpass.getpass(
+                    'Enter Credential (CTRL-D to abort) > ')
             except RuntimeError, e:
                 print "-- %s" % str(e)
                 return 1
@@ -61,9 +63,6 @@ def main():
                 return 1
 
             set_password(args.env, args.variable, password)
-            print("\n-- Successfully stored credentials for variable '%s' in"
-                  " environment [%s] under keyring 'hubble'" %
-                  (args.variable, args.env))
             return 0
 
         if args.get_pass:
@@ -78,10 +77,11 @@ def main():
 
 
 def get_password(env, variable):
-    key = '%s:%s' % (env, variable)
     # If no variable, the we are getting a global
     if variable is None:
-        key = '__hubble__'
+        variable = env
+        env = '__global__'
+    key = '%s:%s' % (env, variable)
     cred = keyring.get_password('hubble', key)
     if cred is None:
         raise RuntimeError("No Such variable '%s' in environment [%s]"
@@ -93,12 +93,15 @@ def get_password(env, variable):
 def set_password(env, variable, password):
     # Try to store the password
     try:
-        key = '%s:%s' % (env, variable)
         # If no variable, the we are setting a global
         if variable is None:
-            key = '__hubble__'
-        print "key: %s" % key
-        return keyring.set_password('hubble', key, password)
+            variable = env
+            env = '__global__'
+        key = '%s:%s' % (env, variable)
+        keyring.set_password('hubble', key, password)
+        print("\n-- Successfully stored credentials for variable '%s' in"
+              " environment [%s] under keyring 'hubble'" %
+              (variable, env))
     except keyring.errors.PasswordSetError, e:
         raise RuntimeError("Unable to store credentials for variable '%s' in"
                            " environment [%s] under the hubble service - %s" %

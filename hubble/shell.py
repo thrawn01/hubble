@@ -113,7 +113,7 @@ class Env(dict):
                 return keys.get_password(pair.section, variable)
             else:
                 regex = "USE_KEYRING\[([\x27\x22])(.*)\\1\]"
-                var = re.match(regex, value).group(2)
+                variable = re.match(regex, value).group(2)
                 return keys.get_password(variable, None)
         return value
 
