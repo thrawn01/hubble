@@ -229,30 +229,60 @@ $ swiftly get /
 Hubble will always pass along the ``-h`` to the command defined by the default environment (In the above case, cinder)
 
 ## But I don't want to store my passwords in plain text!
-You can use a third party script (coming soon) to retrieve passwords out of a keyring (like OSX Keychain)
-Just add the ``env-cmd`` to an environment in your ``~/.hubblerc`` like so.
+If you are familiar with how supernova keystores work, this will feel very familiar.
+
+### Global keyring storage
+Storing a credential as a global credential allows you to use it across
+multiple environments. The greatest benefit of this option is that you only
+need to set credentials in one place within your keyring.
+
+To set a global keyring use ``hubble-keyring``
 ```
-[prod]
-OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
-OS_REGION_NAME=USA
-env-cmd=keyring-command --get ${section} 
-```
-``${section}`` will get expanded to the section you defined the ``env-cmd`` in. You also have access to any other variables
-available in the section. For example you could key off of the $OS_AUTH_URL to get your credentials
-```
-[prod]
-OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
-OS_REGION_NAME=USA
-env-cmd=keyring-command --auth ${OS_AUTH_URL} --get ${section}
+$ hubble-keyring --set os-password
+Enter Credential (CTRL-D to abort) >
+
+-- Successfully stored credentials for variable 'os-password' in environment [__global__] under keyring 'hubble'
 ```
 
-The only requirement for the ``env-cmd`` is that it must output the variables in the following format
+You can verify the value stored with the ``--get`` option
+
 ```
-KEY=VALUE
-key=value
+$ hubble-keyring --get os-password
+my-password-i-typed
 ```
-A new line ‘\n’ must separate each variable. As an example the following is a valid
-``env-cmd`` that will add a variable 'FOO' to the environment ``env-cmd=echo 'FOO=BAR' ``
+
+Once you have a credential set in the keystore you can use
+``USE_KEYRING['os-password']`` in the hubble config in place of your actual
+password. NOTE: The name used 'os-password' holds no special meaning, you can
+use what ever name you want to store your username, password or whatever.
+
+```
+[dfw]
+OS_REGION_NAME=DFW
+OS_PASSWORD=USE_KEYRING['os-password']
+
+[ord]
+OS_REGION_NAME=ORD
+OS_PASSWORD=USE_KEYRING['os-password']
+```
+
+### Environment-specific keyring storage
+To set a environment specific keyring, first modify the ``.hubblerc`` config.
+```
+[dfw]
+OS_REGION_NAME=DFW
+OS_PASSWORD=USE_KEYRING
+```
+
+Then set the ``OS_PASSWORD`` with the ``hubble-keyring --set dfw OS_PASSWORD``
+```
+$ hubble-keyring --set dfw OS_PASSWORD
+Enter Credential (CTRL-D to abort) >
+
+-- Successfully stored credentials for variable 'OS_PASSWORD' in environment [dfw] under keyring 'hubble'
+```
+
+Now only ``OS_PASSWORD`` in the ``[dfw]`` section will get the stored keystore credential
 
 ## What if I want to optionally execute an external script? (For impersonating customers!)
 hubble provides an ``-o`` option to pass in additional information on the command line when building an environment.
