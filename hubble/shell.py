@@ -12,6 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from __future__ import print_function
+
 from subprocess import check_output, CalledProcessError, Popen
 from ConfigParser import NoSectionError
 from hubble.config import readConfigs
@@ -177,16 +179,30 @@ def getEnvironments(args, choice, config):
 
 def toDict(string):
     """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
-    return dict([[i.strip() for i in line.split('=', 1)]
-            for line in string.rstrip().split('\n')])
+    try:
+        if len(string) == 0:
+            print("-- Warning: executable specifed by 'opt-cmd' did not return"
+                  " any key=values, environment not updated")
+            return dict()
+        return dict([[i.strip() for i in line.split('=', 1)]
+                for line in string.rstrip().split('\n')])
+    except ValueError:
+        print(string)
+        print("-- Output from 'opt-cmd' was not parsable"
+              " as a 'key=value' string")
+        return dict()
 
-
-def run(cmd):
+def run(cmd, env):
     """ Parse the output from the command passed into a dict({'key': 'value'}) """
-    # don't attempt to run an empty command
     if empty(cmd):
         return {}
-    return toDict(check_output(cmd, shell=True))
+
+    # Execute the command with the current env
+    # overlaid with our built environment
+    environ = os.environ.copy()
+    environ.update(env.toDict())
+    # Use of undocumented 'env' option on check_output
+    return toDict(check_output(cmd, shell=True, env=environ))
 
 
 def cmdPath(cmd, conf):
@@ -251,12 +267,12 @@ def main():
 
         # If there was an error
         if conf.getError():
-            print conf.getError()
+            print(conf.getError())
             return 1
 
         if choice is None:
-            print "Environments Configured: %s" % ",".join(conf.sections())
-            print "See --help for usage"
+            print("Environments Configured: %s" % ",".join(conf.sections()))
+            print("See --help for usage")
             return 1
         if hubble_args.help:
             other_args.append('--help')
@@ -274,15 +290,15 @@ def main():
                 if 'opt-cmd' not in env:
                     raise RuntimeError("provided -o|--option, but 'opt-cmd' is not defined in"
                             " '%s' section" % env['section'].value)
-                env.add(run(env['opt-cmd'].value))
+                env.add(run(env['opt-cmd'].value, env))
 
             # Populate environment vars by running the env-cmd if it exists
             if 'env-cmd' in env:
-                env.add(run(env['env-cmd'].value))
+                env.add(run(env['env-cmd'].value, env))
 
             # If querying multiple environments, display the env name
             if len(environments) != 1 or hubble_args.debug:
-                print "-- [%s] --" % green(env['section'].value)
+                print("-- [%s] --" % green(env['section'].value))
 
             # If our invocation name is not 'hubble'
             if not sys.argv[0].endswith('hubble'):
@@ -302,7 +318,7 @@ def main():
                 # For cinder client debug
                 if env['cmd'].endswith('cinder'):
                     env.add({'CINDERCLIENT_DEBUG': '1'})
-                print "%r\n" % env
+                print("%r\n" % env)
                 other_args.insert(0, '--debug')
 
             # Grab a copy of the local environment and inject it into our environment
@@ -320,12 +336,16 @@ def main():
 
             except OSError, e:
                 if e.errno == 2:
-                    print "-- No such executable '%s', you must specify the executable "\
-                        "in the [hubble-commands] section of the config (See README)"\
-                        % env['cmd'].value
+                    print("-- No such executable '%s', you must specify the executable "
+                        "in the [hubble-commands] section of the config (See README)"
+                        % env['cmd'].value)
                 raise RuntimeError("exec failed '%s' - %s" % (env['cmd'].value, e))
-            print "\n",
+            print("\n",)
 
-    except (RuntimeError, CalledProcessError, NoSectionError), e:
+    except (RuntimeError, NoSectionError), e:
+        log.critical(e)
+        return 1
+    except CalledProcessError, e:
+        log.critical(e.output)
         log.critical(e)
         return 1
