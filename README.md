@@ -110,6 +110,20 @@ $ supercinder hkg show e5b66064-3bb8-11e5-bdac-600308a97d8c
 |         volume_type          |                            SATA                            |
 +------------------------------+------------------------------------------------------------+
 ```
+#### Keep your passwords safe
+Hubble can store credentials in your operating system's local keystore. Just
+use ``hubble-keyring`` to store a credential.
+```
+hubble-keyring --set my-password
+Enter Credential (CTRL-D to abort) >
+
+-- Successfully stored credentials for variable 'my-password' in environment [__global__] under keyring 'hubble'
+```
+Then use the stored password in ``~/.hubblerc``
+```
+[dfw]
+OS_PASSWORD=USE_KEYRING['my-password']
+```
 
 # Installation
 ## GIT
