@@ -192,6 +192,12 @@ $ hubble swift-ord get /
 /src
 ```
 
+## If your using rackspace cloud
+There is a complete ``~/.hubblerc`` example for use with rackspace cloud
+available in the
+[examples/](https://github.com/thrawn01/hubble/blob/master/examples)
+directory.
+
 ## Directory specific configuration
 Hubble supports a directory-scoped configuration. For instance, if you are in a development
 directory you may want ``nova`` and ``swift`` commands to use a specific environment
@@ -305,7 +311,7 @@ hubble nova-prod -o cust-tenant-name list
 Because accessing customer credentials in a multi-tenant environment is very
 vendor specific, The end user must provide the ```get-customer-credentials```
 script. You can find an example of what this script might look like in the
-[examples](http:github.com/thrawn01/hubble/examples) directory
+[examples](https://github.com/thrawn01/hubble/blob/master/examples) directory
 
 
 ## How about running a command across multiple environments?
