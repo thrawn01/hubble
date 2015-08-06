@@ -1,10 +1,115 @@
-# Introduction
+# What is this hubble thing?
 *hubble* is an environment variable manager for tools like cinderclient, novaclient,
 swiftclient and swiftly that rely on environment variables for configuration.
 
-It is inspired by the most excellent supernova written by Major Haden
-(https://github.com/major/supernova/). Imagine hubble as supernova, but
-not just for nova
+If you work with openstack deployments in multiple regions, you want to use *hubble*
+
+# What can I do with it?
+
+#### Run nova commands against multiple regions!
+```
+$ hubble nova-dfw list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | dallas.org   | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
+
+$ hubble nova-ord list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| a8c0cce4-3bb8-11e5-b530-600308a97d8c | chicago.org  | ACTIVE | public=10.28.11
++--------------------------------------+--------------+--------+----------------
+```
+
+#### Run openstack commands across multiple regions
+```
+$ hubble cinder-all show e5b66064-3bb8-11e5-bdac-600308a97d8c
+-- [dfw] --
+ERROR: No volume with a name or ID of 'e5b66064-3bb8-11e5-bdac-600308a97d8c' exists.
+
+-- [iad] --
+ERROR: No volume with a name or ID of 'e5b66064-3bb8-11e5-bdac-600308a97d8c' exists.
+
+-- [ord] --
+ERROR: No volume with a name or ID of 'e5b66064-3bb8-11e5-bdac-600308a97d8c' exists.
+
+-- [hkg] --
++------------------------------+------------------------------------------------------------+
+|           Property           |                           Value                            |
++------------------------------+------------------------------------------------------------+
+|         attachments          |                             []                             |
+|      availability_zone       |                            nova                            |
+|           bootable           |                           false                            |
+|          created_at          |                 2015-08-05T21:33:52.000000                 |
+|     display_description      |                            None                            |
+|         display_name         |                            None                            |
+|          encrypted           |                           False                            |
+|              id              |            e5b66064-3bb8-11e5-bdac-600308a97d8c            |
+| os-vol-tenant-attr:tenant_id |                          account1                          |
+|             size             |                             1                              |
+|            status            |                         available                          |
+|         volume_type          |                            SATA                            |
++------------------------------+------------------------------------------------------------+
+```
+
+#### Impersonate a tenant (vendor specific)
+```
+$ hubble nova-ord -o <tenant-id> list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 23dab790-3bba-11e5-8b6e-600308a97d8c | tenant.org   | ACTIVE | public=10.20.10
++--------------------------------------+--------------+--------+----------------
+```
+
+#### Use a different region, based off your current directory
+```
+$ cd ~/dfw-stuff
+$ hubble list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
+
+$ cd ~/ord-stuff
+$ hubble list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| a8c0cce4-3bb8-11e5-b530-600308a97d8c | ubuntu.org   | ACTIVE | public=10.28.11
++--------------------------------------+--------------+--------+----------------
+```
+
+#### Create special environment specific commands using hubble
+```
+$ supernova dfw list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
+
+$ supercinder hkg show e5b66064-3bb8-11e5-bdac-600308a97d8c
++------------------------------+------------------------------------------------------------+
+|           Property           |                           Value                            |
++------------------------------+------------------------------------------------------------+
+|         attachments          |                             []                             |
+|      availability_zone       |                            nova                            |
+|           bootable           |                           false                            |
+|          created_at          |                 2015-08-05T21:33:52.000000                 |
+|     display_description      |                            None                            |
+|         display_name         |                            None                            |
+|          encrypted           |                           False                            |
+|              id              |            e5b66064-3bb8-11e5-bdac-600308a97d8c            |
+| os-vol-tenant-attr:tenant_id |                          account1                          |
+|             size             |                             1                              |
+|            status            |                         available                          |
+|         volume_type          |                            SATA                            |
++------------------------------+------------------------------------------------------------+
+```
 
 # Installation
 ## GIT
@@ -18,174 +123,68 @@ python setup.py install
 pip install git+https://github.com/thrawn01/hubble.git@master
 ```
 
-# Usage
+# Configuration
 To use hubble, you must define some environments in the config file ``~/.hubblerc``.
 Each environment is given a name followed by the variables that will be populated
 into the environment when that environment is chosen from the command line
 
-Hubble has 2 modes of usage, Invocation Discovery and Command Configuration
+In the following example we create two config sections for each environment.
+One for the [nova](https://github.com/openstack/python-novaclient) command and
+the other for the [swiftly](https://github.com/gholt/swiftly) command
 
-## Invocation Discovery (Recommended)
-With Invocation Discovery hubble chooses the command it will run by inspecting
-the name of the program it was invoked as.
-
-The following is an example with two environments *prod* and *staging*
 ```
-[hubble]
+# --------------------------------------------------------
 # Variables defined here are included in all environments
-OS_AUTH_URL=https://production.auth.thrawn01.com
-OS_SERVICE_NAME=cloudserversOpenStack
-OS_VERSION=2.0
-
-[staging]
-# Swiftly Client
-SWIFTLY_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-SWIFTLY_AUTH_USER=staging-swift-user
-SWIFTLY_AUTH_KEY=staging-swift-user
-# Nova
-OS_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-OS_USERNAME=staging-user
-OS_PASSWORD=staging-password
-OS_TENANT_NAME=000001
-OS_REGION_NAME=USA
-
-[prod]
-# Swiftly Client
-SWIFTLY_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-SWIFTLY_AUTH_USER=prod-swift-user
-SWIFTLY_AUTH_KEY=prod-swift-key
-# Nova
-OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
-OS_USERNAME=prod-username
-OS_PASSWORD=prod-password
-OS_TENANT_NAME=000001
-OS_REGION_NAME=USA
-```
-
-Now create a local directory in your path and link hubble to the commands
-you want to use. 
-
-```
-mkdir ~/bin
-export PATH="~/bin;$PATH"
-ln -s /usr/bin/hubble ~/bin/nova
-ln -s /usr/bin/hubble ~/bin/swiftly
-```
-When hubble is executed, it will inspect the name it was invoked as (in 
-this case the linked name) and attempt to execute *that* name as the command.
-If executables for nova and swiftly are installed in ``/usr/bin``; Your done!
-
-You can now type the following
-```
-$ nova prod list
-+--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks
-+--------------------------------------+--------------+--------+----------------
-| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
-+--------------------------------------+--------------+--------+----------------
-
-$ swiftly staging get /
-/thrawn01.org-files
-/images
-/src
-
-
-```
-### Executables in non-standard locations (like virtualenv)
-Often commands to be executed are not located in ``/usr/bin`` or you don't want to
-replace the original command with one linked to ``hubble``. In this case hubble allows
-you to tell it what command should be called dependent upon the invocation name
-
-In the following example we have *hubble*, *nova* and *cinder* installed in a local virtualenv.
-Here we don't want to override the use of ``nova`` so we create a new link called 
-``supernova`` and tell ``hubble`` when it sees an invocation as ``supernova`` run the 
-``nova`` command
-
-```
-# Add the following section to your ~/.hubblerc file.
-[hubble-commands]
-swiftly=/home/username/virtualenv/python/bin/swiftly
-supernova=/home/username/virtualenv/python/bin/nova
-cinder=/home/username/virtualenv/python/bin/cinder
-
-# Now create a link for supernova
-$ ln -s /home/username/virtualenv/python/bin/hubble ~/bin/supernova
-
-# Run hubble like Supernova
-$ supernova prod list
-+--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks
-+--------------------------------------+--------------+--------+----------------
-| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
-+--------------------------------------+--------------+--------+----------------
-```
-
-## Command Configuration
-With Command Configuration we use the ``~/.hubblerc`` sections to define what command 
-should be executed when ``hubble`` runs
-
-In the following example we create two config sections for each environment. One for the 
-``nova`` command and the other for the ``swiftly`` command
-```
+# --------------------------------------------------------
 [hubble]
-# Variables defined here are included in all environments
-OS_AUTH_URL=https://production.auth.thrawn01.com
-OS_SERVICE_NAME=cloudserversOpenStack
-OS_VERSION=2.0
+OS_AUTH_URL=https://identity.api.rackspacecloud.com/v2.0/
+OS_AUTH_SYSTEM=rackspace
+NOVA_RAX_AUTH=1
 
-[nova-staging]
-OS_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-OS_USERNAME=staging-user
-OS_PASSWORD=staging-password
-OS_TENANT_NAME=000001
-OS_REGION_NAME=USA
+# ------------------------------------
+# Credentials
+# ------------------------------------
+OS_PASSWORD=USE_KEYRING['rackspace-api-key']
+OS_USERNAME=your-rackspace-username
+OS_TENANT_NAME=123456
+
+# ------------------------------------
+# Rackspace Regions
+# ------------------------------------
+[nova-dfw]
+OS_REGION_NAME=DFW
 cmd=/usr/bin/nova
 
-[swiftly-staging]
-SWIFTLY_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-SWIFTLY_AUTH_USER=staging-swift-user
-SWIFTLY_AUTH_KEY=staging-swift-user
-cmd=/usr/bin/swiftly
-
-[nova-prod]
-OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
-OS_USERNAME=prod-username
-OS_PASSWORD=prod-password
-OS_TENANT_NAME=000001
-OS_REGION_NAME=USA
-cmd=/usr/bin/nova
-
-[swiftly-prod]
-SWIFTLY_AUTH_URL=https://staging.auth.thrawn01.org/v1.0
-SWIFTLY_AUTH_USER=prod-swift-user
-SWIFTLY_AUTH_KEY=prod-swift-key
+[swift-ord]
+OS_REGION_NAME=ORD
+SWIFTLY_AUTH_URL=${OS_AUTH_URL}
+SWIFTLY_AUTH_USER=${OS_USERNAME}
+SWIFTLY_AUTH_KEY=USE_KEYRING['rackspace-api-key']
 cmd=/usr/bin/swiftly
 ```
 
 You can now execute the following.
 ```
-$ hubble nova-prod list
+$ hubble nova-dfw list
 +--------------------------------------+--------------+--------+----------------
 | ID                                   | Name         | Status | Networks
 +--------------------------------------+--------------+--------+----------------
 | 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
 +--------------------------------------+--------------+--------+----------------
 
-$ hubble swiftly-staging get /
+$ hubble swift-ord get /
 /thrawn01.org-files
 /images
 /src
-
 ```
 
 ## Directory specific configuration
 Hubble supports a directory-scoped configuration. For instance, if you are in a development
 directory you may want ``nova`` and ``swift`` commands to use a specific environment
-by default, (perhaps a development environment) or have access to environments you should 
-only access from a specific directory.
+by default.
 
 To support this, you can create a ``.hubblerc`` file in the local directory. Hubble will
-read this file during invocation and overide any global configuration with the local one.
+read this file during invocation and override any global configuration with the local one.
 
 In addition you can set a *default* environment when none is found on the command line. To do this,
 you must define ``default-env`` in the ``[hubble]`` section of the config. 
@@ -200,7 +199,7 @@ OS_AUTH_URL=https://development.auth.thrawn01.org/v1.0
 OS_USERNAME=dev-user
 OS_PASSWORD=dev-password
 OS_TENANT_NAME=000001
-OS_REGION_NAME=USA
+OS_REGION_NAME=RegionOne
 cmd=/usr/bin/cinder
 ```
 Now run the following, and hubble will always use the 'development' environment
@@ -208,28 +207,11 @@ Now run the following, and hubble will always use the 'development' environment
 $ cd ~/dev
 $ hubble list
 ```
-If you have a Invocation Discovery configuration, you can invoke your command
-of choice and the default environment will be used. The use of hubble in this configuration
-is completely transparent!
-```
-$ cd ~/dev
-$ nova list
-+--------------------------------------+-------------+--------+----------------
-| ID                                   | Name        | Status | Networks
-+--------------------------------------+-------------+--------+----------------
-| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | devel-box   | ACTIVE | public=10.26.18
-+--------------------------------------+-------------+--------+----------------
-$ swiftly get /
-/devel-box-files
-/images
-/src
-```
 
 *NOTE:* One side effect of using ``default-env`` is that you cannot get to hubble's ``-h`` help option.
 Hubble will always pass along the ``-h`` to the command defined by the default environment (In the above case, cinder)
 
 ## But I don't want to store my passwords in plain text!
-If you are familiar with how supernova keystores work, this will feel very familiar.
 
 ### Global keyring storage
 Storing a credential as a global credential allows you to use it across
@@ -259,11 +241,13 @@ use what ever name you want to store your username, password or whatever.
 ```
 [dfw]
 OS_REGION_NAME=DFW
-OS_PASSWORD=USE_KEYRING['os-password']
+OS_USERNAME=USE_KEYRING['username']
+OS_PASSWORD=USE_KEYRING['dfw-password']
 
 [ord]
 OS_REGION_NAME=ORD
-OS_PASSWORD=USE_KEYRING['os-password']
+OS_USERNAME=USE_KEYRING['username']
+OS_PASSWORD=USE_KEYRING['ord-password']
 ```
 
 ### Environment-specific keyring storage
@@ -284,26 +268,31 @@ Enter Credential (CTRL-D to abort) >
 
 Now only ``OS_PASSWORD`` in the ``[dfw]`` section will get the stored keystore credential
 
-## What if I want to optionally execute an external script? (For impersonating customers!)
+## What if I want to inject environment variables via an external script? (For impersonating customers!)
 hubble provides an ``-o`` option to pass in additional information on the command line when building an environment.
 If the ``-o`` option is used hubble will look for a ``opt-cmd`` in the selected section defined in ```.hubblerc```
 
-As an example, take the following [prod] section
+As an example, take the following [nova-prod] section
 ```
-[prod]
+[nova-prod]
 OS_AUTH_URL=https://prod.auth.thrawn01.org/v1.0
-OS_REGION_NAME=USA
-env-cmd=keyring-command --auth ${OS_AUTH_URL} --get ${section}
-opt-cmd=get-customer-credentials --auth ${OS_AUTH_URL} --username ${opt.option}
+OS_REGION_NAME=DFW
+opt-cmd=~/bin/get-customer-credentials --auth ${OS_AUTH_URL} --username ${opt.option}
 ```
 With this configuration it is possible to access the prod environment with your credentials
 ```
-nova prod list
+hubble nova-prod list
 ```
 or with a customers credentials
 ```
-nova prod -o cust-user-name list
+hubble nova-prod -o cust-tenant-name list
 ```
+
+Because accessing customer credentials in a multi-tenant environment is very
+vendor specific, The end user must provide the ```get-customer-credentials```
+script. You can find an example of what this script might look like in the
+[examples](http:github.com/thrawn01/hubble/examples) directory
+
 
 ## How about running a command across multiple environments?
 You can define a section in ```~/.hubblerc``` as a meta section. 
@@ -312,40 +301,31 @@ section, then source and run the command for each section listed in the meta lis
 
 As an example
 ```
-[usa]
+[cinder-all]
 OS_AUTH_URL=http://usa.auth.thrawn01.org
-meta=['chicago', 'dallas']
+cmd=/usr/bin/cinder
+meta=['dfw', 'ord', 'lon']
 
-[london]
+[lon]
 OS_AUTH_URL=http://lon.auth.thrawn01.org
 
-[chicago]
+[ord]
 OS_USERNAME=ord-user
 OS_PASSWORD=ord-password
 OS_TENANT_NAME=000001
+OS_REGION_NAME=ORD
 
-[dallas]
-OS_USERNAME=dallas-user
-OS_PASSWORD=dallas-password
+[dfw]
+OS_USERNAME=dfw-user
+OS_PASSWORD=dfw-password
 OS_TENANT_NAME=000001
+OS_REGION_NAME=DFW
 ```
-This configuration allows a user to specify a 'usa' environment that will run
-a command for both the chicago and dallas environments
-```
-$ nova usa list
--- [dallas] --
-+--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks
-+--------------------------------------+--------------+--------+----------------
-| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
-+--------------------------------------+--------------+--------+----------------
 
--- [chicago] --
-+--------------------------------------+--------------+--------+----------------
-| ID                                   | Name         | Status | Networks
-+--------------------------------------+--------------+--------+----------------
-| 6f586a82-2858-11e2-bbfe-e3c8f66fdabb | backup01.org | ACTIVE | public=11.20.16
-+--------------------------------------+--------------+--------+----------------
+This configuration allows a user to specify a 'cinder-all' environment that will run
+a cinder command in lon, ord and dfw environments
+```
+$ hubble cinder-all list
 ```
 
 ## How about running an arbitrary command?
@@ -371,6 +351,97 @@ can run hubble with our custom command remotely like so
 
 ```
 ssh thrawn@my-host.com /usr/bin/hubble -e /path/to/custom-command
+```
+
+## Advanced Usage (Invocation Discovery)
+With Invocation Discovery hubble chooses the command it will run by inspecting
+the name of the program it was invoked as. This allows you to define a single
+environment and have multiple command utilize the same environment config.
+
+The following is an example with two environments *prod* and *staging*
+```
+[hubble]
+# Variables defined here are included in all environments
+OS_AUTH_URL=https://identity.api.rackspacecloud.com/v2.0/
+OS_AUTH_SYSTEM=rackspace
+NOVA_RAX_AUTH=1
+
+# ------------------------------------
+# Swiftly Stuff
+# ------------------------------------
+SWIFTLY_AUTH_URL=${OS_AUTH_URL}
+SWIFTLY_AUTH_USER=${OS_USERNAME}
+SWIFTLY_AUTH_KEY=USE_KEYRING['rackspace-api-key']
+
+# ------------------------------------
+# Credentials
+# ------------------------------------
+OS_PASSWORD=USE_KEYRING['rackspace-api-key']
+OS_USERNAME=your-rackspace-username
+OS_TENANT_NAME=123456
+
+[staging]
+OS_AUTH_URL=https://staging.mycloud.com/v2.0/
+SWIFTLY_AUTH_URL=${OS_AUTH_URL}
+OS_REGION_NAME=STAGING
+
+[dfw]
+OS_REGION_NAME=USA
+```
+
+Now link (ln -s) a command you want to use somewhere in your path that links back to hubble
+```
+mkdir ~/bin
+export PATH="~/bin;$PATH"
+ln -s /usr/bin/hubble ~/bin/nova
+ln -s /usr/bin/hubble ~/bin/swiftly
+```
+When hubble is executed, it will inspect the name it was invoked as (in 
+this case the linked name) and attempt to execute *that* name as the command.
+If executables for nova and swiftly are installed in ``/usr/bin``; Your done!
+
+You can now type the following
+```
+$ nova prod list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
+
+$ swiftly staging get /
+/thrawn01.org-files
+/images
+/src
+```
+
+### Executables in non-standard locations (like virtualenv)
+Often commands to be executed are not located in ``/usr/bin`` or you don't want to
+replace the original command with one linked to ``hubble``. In this case hubble allows
+you to tell it what command should be called dependent upon the invocation name
+
+In the following example we have *hubble*, *nova* and *cinder* installed in a
+local virtualenv.  Here we don't want to override the use of ``nova`` so we
+create a new link called ``supernova`` and tell ``hubble`` when it sees an
+invocation as ``supernova`` run the ``nova`` command. By doing this you can
+still run ``nova`` without hubble; preserving original behavior.
+
+```
+# Add the following section to your ~/.hubblerc file.
+[hubble-commands]
+swiftly=/home/username/virtualenv/python/bin/swiftly
+supernova=/home/username/virtualenv/python/bin/nova
+cinder=/home/username/virtualenv/python/bin/cinder
+
+# Now create a link for supernova
+$ ln -s /home/username/virtualenv/python/bin/hubble ~/bin/supernova
+
+$ supernova prod list
++--------------------------------------+--------------+--------+----------------
+| ID                                   | Name         | Status | Networks
++--------------------------------------+--------------+--------+----------------
+| 54e2b87c-2850-11e2-a96f-e3cb6992c8ed | thrawn01.org | ACTIVE | public=10.26.18
++--------------------------------------+--------------+--------+----------------
 ```
 
 ## Complete list of available variables

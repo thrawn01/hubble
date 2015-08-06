@@ -1,0 +1,82 @@
+# -----------------------------------------------------------------------------
+# Copy this sample to ~/.hubblerc then run this command to add credentials to
+# your keyring.
+#
+#   $ hubble-keyring --set rackspace-api-key
+#
+# OS_TENANT_NAME is your Rackspace account number. You can find it
+# at the top right of your screen when you log in.
+#
+#   https://mycloud.rackspace.com/
+#
+# Now Install the rackspace meta package so the OS_AUTH_SYSTEM finds
+# the 'rackspace' auth plugin.
+#
+#   $ pip install rackspace-novaclient
+#
+# Now you can list all your cloud servers like this
+#
+#   $ hubble nova-dfw list
+#   $ hubble nova-ord list
+#   $ hubble nova-hkg list
+#
+# List all your volumes in DFW like this
+#
+#   $ hubble cinder-dfw list
+#
+# Show DFW root file listing in swift
+#
+#   $ hubble swift-dfw get /
+#
+# -----------------------------------------------------------------------------
+
+# --------------------------------------------------------
+# Variables defined here are included in all environments
+# --------------------------------------------------------
+[hubble]
+OS_AUTH_URL=https://identity.api.rackspacecloud.com/v2.0/
+OS_AUTH_SYSTEM=rackspace
+NOVA_RAX_AUTH=1
+cmd=/usr/bin/nova
+
+# ------------------------------------
+# Credentials
+# ------------------------------------
+OS_PASSWORD=USE_KEYRING['rackspace-api-key']
+OS_USERNAME=your-rackspace-username
+OS_TENANT_NAME=123456
+
+# ------------------------------------
+# All Rackspace Regions
+# ------------------------------------
+[nova-dfw]
+OS_REGION_NAME=DFW
+
+[nova-ord]
+OS_REGION_NAME=ORD
+
+[nova-iad]
+OS_REGION_NAME=IAD
+
+[nova-syd]
+OS_REGION_NAME=SYD
+
+[nova-hkg]
+OS_REGION_NAME=HKG
+
+# ------------------------------------
+# Cinder Client for DFW
+# ------------------------------------
+[cinder-dfw]
+OS_REGION_NAME=DFW
+cmd=/usr/local/bin/cinder
+
+# ------------------------------------
+# Swiftly client (https://github.com/gholt/swiftly)
+# ------------------------------------
+[swift-dfw]
+SWIFTLY_AUTH_URL=${OS_AUTH_URL}
+SWIFTLY_AUTH_USER=${OS_USERNAME}
+SWIFTLY_AUTH_KEY=USE_KEYRING['rackspace-api-key']
+OS_REGION_NAME=DFW
+cmd=/usr/local/bin/swiftly
