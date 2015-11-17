@@ -9,6 +9,9 @@
 #
 #   https://mycloud.rackspace.com/
 #
+# Finally OS_USERNAME is the rackspace username you use to log into
+# https://mycloud.rackspace.com/
+#
 # Now Install the rackspace meta package so the OS_AUTH_SYSTEM finds
 # the 'rackspace' auth plugin.
 #

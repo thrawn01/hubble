@@ -134,7 +134,7 @@ python setup.py install
 ```
 ## PIP
 ```
-pip install git+https://github.com/thrawn01/hubble.git@master
+pip install hubble
 ```
 
 # Configuration
