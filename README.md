@@ -364,7 +364,7 @@ OS_USERNAME=user
 OS_PASSWORD=password
 OS_TENANT_NAME=000001
 OS_REGION_NAME=USA
-default-env=local
+default-env=hubble
 ```
 Notice the inclusion of the [hubble] section is optional. With this config we
 can run hubble with our custom command remotely like so
