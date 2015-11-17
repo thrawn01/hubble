@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from subprocess import check_output, CalledProcessError, Popen
+from subprocess import check_output, CalledProcessError, Popen, PIPE
 from ConfigParser import NoSectionError
 from hubble.config import readConfigs
 import collections
@@ -74,7 +74,7 @@ class Env(dict):
         for key, value in envs.iteritems():
             # if the value is empty
             if empty(value):
-                # Delete the key from the env 
+                # Delete the key from the env
                 self.delete(key)
             # else add it
             self.set(key, value, section, key.isupper())
@@ -230,7 +230,6 @@ def evalArgs(conf, parser):
     (arg1, arg2) = parser.parse_known_args()
     return (arg1, arg2, env)
 
-
 def main():
     logging.basicConfig(format='-- %(message)s')
     log.setLevel(logging.CRITICAL)
@@ -283,6 +282,7 @@ def main():
 
         # Read environment values from config files
         environments = getEnvironments(hubble_args, choice, conf)
+        processes = []
         for env in environments:
             # Populate environment vars by running opt-cmd
             # if -o was passed on the commandline
@@ -297,7 +297,7 @@ def main():
                 env.add(run(env['env-cmd'].value, env))
 
             # If querying multiple environments, display the env name
-            if len(environments) != 1 or hubble_args.debug:
+            if hubble_args.debug:
                 print("-- [%s] --" % green(env['section'].value))
 
             # If our invocation name is not 'hubble'
@@ -328,19 +328,25 @@ def main():
             try:
                 # Run the requested command
                 p = Popen([env['cmd'].value] + other_args,
-                    stdout=sys.stdout,
-                    stderr=sys.stderr,
+                    stdout=PIPE,
+                    stderr=PIPE,
                     env=environ)
-                # Wait for the command to complete
-                p.wait()
-
+                processes.append((p, env['section'].value))
             except OSError, e:
                 if e.errno == 2:
                     print("-- No such executable '%s', you must specify the executable "
                         "in the [hubble-commands] section of the config (See README)"
                         % env['cmd'].value)
                 raise RuntimeError("exec failed '%s' - %s" % (env['cmd'].value, e))
-            print("\n",)
+
+        for p, env in processes:
+            if len(environments) != 1:
+                print("-- [%s] --" % green(env))
+            # Wait for the command to complete
+            p.wait()
+            stdout, stderr = p.communicate()
+            sys.stdout.write(stdout)
+            sys.stderr.write(stderr)
 
     except (RuntimeError, NoSectionError), e:
         log.critical(e)
