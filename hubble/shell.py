@@ -343,7 +343,6 @@ def main():
             if len(environments) != 1:
                 print("-- [%s] --" % green(env))
             # Wait for the command to complete
-            p.wait()
             stdout, stderr = p.communicate()
             sys.stdout.write(stdout)
             sys.stderr.write(stderr)
