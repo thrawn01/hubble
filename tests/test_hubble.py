@@ -26,14 +26,14 @@ class TestEnv(unittest.TestCase):
         env.set('last', 'Wippler')
         env.set('string', 'My name is ${first} ${last}')
         env.eval()
-        self.assertEquals(env['string'].value, "My name is Derrick Wippler")
+        self.assertEqual(env['string'].value, "My name is Derrick Wippler")
 
     def test_env_toDict(self):
         env = Env()
         env.set('first', 'Derrick')
         env.set('last', 'Wippler')
         env.set('no-export', 'wat', export=False)
-        self.assertEquals(env.toDict(), {'first': 'Derrick', 'last': 'Wippler'})
+        self.assertEqual(env.toDict(), {'first': 'Derrick', 'last': 'Wippler'})
 
     def test_getEnvironments(self):
         parser = argparse.ArgumentParser()
@@ -50,7 +50,7 @@ class TestEnv(unittest.TestCase):
                         "last=Wippler\n")
         env = getEnvironments(args, 'name', parseConfigs([file]))
         self.assertIn('name', env[0])
-        self.assertEquals(env[0]['name'].value, 'My name is Derrick Wippler')
+        self.assertEqual(env[0]['name'].value, 'My name is Derrick Wippler')
 
         self.assertIn('FIRST', env[0])
         self.assertIn('last', env[0])
@@ -58,14 +58,14 @@ class TestEnv(unittest.TestCase):
 
 class TestHubble(unittest.TestCase):
     def test_empty(self):
-        self.assertEquals(empty(None), True)
-        self.assertEquals(empty(""), True)
-        self.assertEquals(empty("1"), False)
-        self.assertEquals(empty("   "), True)
-        self.assertEquals(empty("   r"), False)
+        self.assertEqual(empty(None), True)
+        self.assertEqual(empty(""), True)
+        self.assertEqual(empty("1"), False)
+        self.assertEqual(empty("   "), True)
+        self.assertEqual(empty("   r"), False)
 
     def test_toDict(self):
-        self.assertEquals(toDict("key=value\nfoo=bar\n"), {'key': 'value', 'foo': 'bar'})
+        self.assertEqual(toDict("key=value\nfoo=bar\n"), {'key': 'value', 'foo': 'bar'})
 
     def test_run(self):
         env = run('echo "USER=thrawn\nSHELL=bash"')
