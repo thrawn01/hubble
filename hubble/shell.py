@@ -66,12 +66,12 @@ class Env(dict):
             pass
 
     def update(self, envs):
-        for key, pair in envs.iteritems():
+        for key, pair in envs.items():
             self[key] = pair
 
     def add(self, envs, section=None):
         """ Adds or removes items in the dict 'envs' to the collection """
-        for key, value in envs.iteritems():
+        for key, value in envs.items():
             # if the value is empty
             if empty(value):
                 # Delete the key from the env
@@ -81,7 +81,7 @@ class Env(dict):
 
     def eval(self):
         """ Exapand all the ${variable} directives in the collection """
-        for key, pair in self.iteritems():
+        for key, pair in self.items():
             self[key].value = self.expandVar(key, pair)
         return self
 
@@ -124,13 +124,13 @@ class Env(dict):
         Convert the entire collection of Pair() objects to a
         dict({'key': str()}) only where export == True
         """
-        return dict([(key, value.value) for key, value in self.iteritems() if value.export])
+        return dict([(key, value.value) for key, value in self.items() if value.export])
 
     def __repr__(self):
         """ Pretty print the collection """
         # Calculate the max length of any key, and indent by that amount
         fmt = "%{0}s: %s".format(len(max(self.keys(), key=len)))
-        return '\n'.join([fmt % (key, value.value) for key, value in self.iteritems()])
+        return '\n'.join([fmt % (key, value.value) for key, value in self.items()])
 
 
 def empty(value):
