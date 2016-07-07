@@ -14,7 +14,7 @@
 
 
 from hubble.shell import getEnvironments, Env, run, toDict, parseConfigs, empty
-from StringIO import StringIO
+from six.moves import StringIO
 import unittest
 import argparse
 
@@ -71,4 +71,3 @@ class TestHubble(unittest.TestCase):
         env = run('echo "USER=thrawn\nSHELL=bash"')
         self.assertIn('USER', env)
         self.assertIn('SHELL', env)
-

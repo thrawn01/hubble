@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from subprocess import check_output, CalledProcessError, Popen, PIPE
-from ConfigParser import NoSectionError
+from six.moves.configparser import NoSectionError
 from hubble.config import readConfigs
 import collections
 import argparse
