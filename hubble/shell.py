@@ -27,7 +27,7 @@ import os
 
 try:
     # Not everyone needs keyring
-    import keys
+    from hubble import keys
 except ImportError:
     keys = None
 
