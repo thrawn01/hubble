@@ -332,7 +332,7 @@ def main():
                     stderr=PIPE,
                     env=environ)
                 processes.append((p, env['section'].value))
-            except OSError, e:
+            except OSError as e:
                 if e.errno == 2:
                     print("-- No such executable '%s', you must specify the executable "
                         "in the [hubble-commands] section of the config (See README)"
@@ -347,10 +347,10 @@ def main():
             sys.stdout.write(stdout)
             sys.stderr.write(stderr)
 
-    except (RuntimeError, NoSectionError), e:
+    except (RuntimeError, NoSectionError) as e:
         log.critical(e)
         return 1
-    except CalledProcessError, e:
+    except CalledProcessError as e:
         log.critical(e.output)
         log.critical(e)
         return 1

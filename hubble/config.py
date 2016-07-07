@@ -79,7 +79,7 @@ def validateVariableExists(args):
     try:
         # attempt to get the variable from the requested environment
         conf.get(args.env, args.variable)
-    except NoSectionError, e:
+    except NoSectionError as e:
         raise RuntimeError("No such environment [%s] in '%s'" %
                            (args.env, conf.name))
     except NoOptionError:

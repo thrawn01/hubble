@@ -53,7 +53,7 @@ def main():
                     validateVariableExists(args)
                 password = getpass.getpass(
                     'Enter Credential (CTRL-D to abort) > ')
-            except RuntimeError, e:
+            except RuntimeError as e:
                 print "-- %s" % str(e)
                 return 1
 
@@ -71,7 +71,7 @@ def main():
 
         print "-- Please specify --get or --set on the command line"
         return 1
-    except RuntimeError, e:
+    except RuntimeError as e:
         print "-- %s" % str(e)
         return 1
 
@@ -102,7 +102,7 @@ def set_password(env, variable, password):
         print("\n-- Successfully stored credentials for variable '%s' in"
               " environment [%s] under keyring 'hubble'" %
               (variable, env))
-    except keyring.errors.PasswordSetError, e:
+    except keyring.errors.PasswordSetError as e:
         raise RuntimeError("Unable to store credentials for variable '%s' in"
                            " environment [%s] under the hubble service - %s" %
                            (env, variable, str(e)))
