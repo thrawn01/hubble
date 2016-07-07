@@ -15,6 +15,8 @@
 #   The following code was borrowed heavily from supernova-keyring
 #   (https://github.com/major/supernova) under the same license
 
+from __future__ import print_function
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from hubble.config import validateVariableExists
 import keyring
@@ -54,25 +56,25 @@ def main():
                 password = getpass.getpass(
                     'Enter Credential (CTRL-D to abort) > ')
             except RuntimeError as e:
-                print "-- %s" % str(e)
+                print("-- %s" % str(e))
                 return 1
 
             # Did we get a password from the prompt?
             if not password or len(password) < 1:
-                print "\n-- No data was altered in your keyring."
+                print("\n-- No data was altered in your keyring.")
                 return 1
 
             set_password(args.env, args.variable, password)
             return 0
 
         if args.get_pass:
-            print get_password(args.env, args.variable)
+            print(get_password(args.env, args.variable))
             return 0
 
-        print "-- Please specify --get or --set on the command line"
+        print("-- Please specify --get or --set on the command line")
         return 1
     except RuntimeError as e:
-        print "-- %s" % str(e)
+        print("-- %s" % str(e))
         return 1
 
 
