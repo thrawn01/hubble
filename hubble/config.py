@@ -14,7 +14,7 @@
 
 from six import string_types
 from six.moves.configparser import NoSectionError, NoOptionError
-from six.moves.configparser import RawConfigParser
+from six.moves.configparser import RawConfigParser, _UNSET
 from itertools import chain
 import os
 
@@ -60,8 +60,22 @@ class InheritanceConfigParser(ListConfigParser):
 
         return chain
 
+    def items(self, section=_UNSET, raw=False, vars=None):
+        '''This is actually an upstream bug, imo.
 
-class SafeConfigParser(RawConfigParser):
+        '''
+
+        d = self._unify_values(section, vars)
+
+        value_getter = lambda option: self._interpolation.before_get(self,
+            section, option, d[option], d)
+        if raw:
+            value_getter = lambda option: d[option]
+
+        return [(self.optionxform(option), value_getter(option)) for option in d.keys()]
+
+
+class SafeConfigParser(InheritanceConfigParser):
     """ Simple subclass to add the safeGet() method """
     def getError(self):
         return None
@@ -90,20 +104,20 @@ def openFd(file):
     except IOError:
         return None
 
-def readConfigs(files=None):
+def readConfigs(files=None, default_section=None):
     """ Given a list of file names, return a list of handles to succesfully opened files"""
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
         return ErrorConfigParser("Unable to find config files in these"
                                  " locations [%s]" % ", ".join(files))
-    return parseConfigs([openFd(file) for file in files])
+    return parseConfigs([openFd(file) for file in files], default_section)
 
 
-def parseConfigs(fds):
+def parseConfigs(fds, default_section=None):
     """ Given a list of file handles, parse all the files with ConfigParser() """
     # Read the config file
-    config = SafeConfigParser()
+    config = SafeConfigParser(default_section=default_section)
     # Don't transform (lowercase) the key values
     config.optionxform = str
     # Read all the file handles passed

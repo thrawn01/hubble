@@ -148,12 +148,6 @@ def getEnvironments(args, choice, config):
     results = []
     conf = Env()
 
-    try:
-        # Get the default variables if exists
-        conf.add(dict(config.items('hubble')), 'hubble')
-    except NoSectionError:
-        pass
-
     # Merge in the requested environment
     conf.add(dict(config.items(choice)), choice)
     # If requested section is a meta section
@@ -219,7 +213,7 @@ def cmdPath(cmd, conf):
 
 
 def evalArgs(conf, parser):
-    env = conf.safeGet('hubble', 'default-env')
+    env = conf.safeGet(conf.default_section, 'default-env')
     # If no default environment set, look for an
     # environment choice on the command line
     if not env:
@@ -256,7 +250,7 @@ def main():
 
     try:
         # Read the configs
-        conf = readConfigs()
+        conf = readConfigs(default_section='hubble')
         # Evaluate the command line arguments and return our args
         # the commands args and the environment choice the user made
         hubble_args, other_args, choice = evalArgs(conf, parser)
