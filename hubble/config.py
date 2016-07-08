@@ -12,9 +12,54 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from six import string_types
 from six.moves.configparser import NoSectionError, NoOptionError
 from six.moves.configparser import RawConfigParser
+from itertools import chain
 import os
+
+
+class ListConfigParser(RawConfigParser):
+    def __init__(self, *args, **kwargs):
+        super(ListConfigParser, self).__init__(*args, **kwargs)
+
+        self._converters.update(
+            list=self.list_converter
+        )
+
+    @staticmethod
+    def list_converter(value):
+        if isinstance(value, string_types):
+            value = filter(None, (i.strip() for i in value.splitlines()))
+        return list(value)
+
+
+class InheritanceConfigParser(ListConfigParser):
+    def _supersections(self, section):
+        try:
+            section_names = self.list_converter(self._sections[section]['%inherit'])
+        except KeyError:
+            return []
+
+        sections = [self._sections[section] for section in section_names]
+
+        # nested inheritance
+        hypersections = (self._supersections(section_name) for section_name in section_names)
+
+        return chain(sections, *hypersections)
+
+
+    def _unify_values(self, section, vars):
+        '''Inject supersections into the correct position in the inheritance
+        chain.
+
+        '''
+        chain = super(InheritanceConfigParser, self)._unify_values(section, vars)
+
+        chain.maps[2:2] = self._supersections(section)
+
+        return chain
+
 
 class SafeConfigParser(RawConfigParser):
     """ Simple subclass to add the safeGet() method """
