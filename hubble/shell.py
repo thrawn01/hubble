@@ -344,8 +344,8 @@ def main():
                 print("-- [%s] --" % green(env))
             # Wait for the command to complete
             stdout, stderr = p.communicate()
-            sys.stdout.write(stdout)
-            sys.stderr.write(stderr)
+            sys.stdout.write(stdout.decode('utf-8'))
+            sys.stderr.write(stderr.decode('utf-8'))
 
     except (RuntimeError, NoSectionError) as e:
         log.critical(e)
