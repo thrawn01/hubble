@@ -51,7 +51,8 @@ class TestEnv(unittest.TestCase):
                         "FIRST=Derrick\n"
                         "last=Wippler\n")
         file.name = "test-config.ini"
-        env = getEnvironments(args, 'name', parseConfigs([file]))
+        config = parseConfigs([file], default_section='hubble')
+        env = getEnvironments(args, 'name', config)
         self.assertIn('name', env[0])
         self.assertEqual(env[0]['name'].value, 'My name is Derrick Wippler')
 
