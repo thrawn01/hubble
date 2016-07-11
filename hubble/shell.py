@@ -20,7 +20,6 @@ from hubble.config import readConfigs
 import argparse
 import textwrap
 import logging
-import six
 import sys
 import re
 import os
@@ -181,10 +180,7 @@ def toDict(buf):
     """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
     try:
         # Convert the bytes to string
-        if six.PY3:
-            buf = str(buf.rstrip(), "UTF-8")
-        else:
-            buf = str(buf.rstrip())
+        buf = buf.decode('utf-8').rstrip()
 
         if len(buf) == 0:
             print("-- Warning: executable specified by 'opt-cmd' did not return"
@@ -207,7 +203,6 @@ def run(cmd, env):
     environ = os.environ.copy()
     environ.update(env.toDict())
     # Use of undocumented 'env' option on check_output
-    print(str(check_output(cmd, shell=True, env=environ)))
     return toDict(check_output(cmd, shell=True, env=environ))
 
 
