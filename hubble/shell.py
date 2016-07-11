@@ -17,10 +17,10 @@ from __future__ import print_function
 from subprocess import check_output, CalledProcessError, Popen, PIPE
 from six.moves.configparser import NoSectionError
 from hubble.config import readConfigs
-import collections
 import argparse
 import textwrap
 import logging
+import six
 import sys
 import re
 import os
@@ -177,18 +177,23 @@ def getEnvironments(args, choice, config):
     return results
 
 
-def toDict(string):
+def toDict(buf):
     """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
     try:
-        if len(string) == 0:
-            print("-- Warning: executable specifed by 'opt-cmd' did not return"
+        # Convert the bytes to string
+        if six.PY3:
+            buf = str(buf.rstrip(), "UTF-8")
+        else:
+            buf = str(buf.rstrip())
+
+        if len(buf) == 0:
+            print("-- Warning: executable specified by 'opt-cmd' did not return"
                   " any key=values, environment not updated")
             return dict()
         return dict([[i.strip() for i in line.split('=', 1)]
-                for line in string.rstrip().split('\n')])
+                     for line in buf.rstrip().split('\n')])
     except ValueError:
-        print(string)
-        print("-- Output from 'opt-cmd' was not parsable"
+        print("-- Output from 'opt-cmd' was not parsed"
               " as a 'key=value' string")
         return dict()
 
@@ -202,6 +207,7 @@ def run(cmd, env):
     environ = os.environ.copy()
     environ.update(env.toDict())
     # Use of undocumented 'env' option on check_output
+    print(str(check_output(cmd, shell=True, env=environ)))
     return toDict(check_output(cmd, shell=True, env=environ))
 
 
