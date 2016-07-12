@@ -13,8 +13,8 @@
 #   limitations under the License.
 
 from six import string_types
-from six.moves.configparser import NoSectionError, NoOptionError
-from six.moves.configparser import RawConfigParser, _UNSET
+from configparser import NoSectionError, NoOptionError
+from configparser import RawConfigParser, _UNSET
 from itertools import chain
 import os
 

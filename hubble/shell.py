@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from subprocess import check_output, CalledProcessError, Popen, PIPE
-from six.moves.configparser import NoSectionError
+from configparser import NoSectionError
 from hubble.config import readConfigs
 import argparse
 import textwrap
@@ -94,7 +94,7 @@ class Env(dict):
                 var = match.group(0)
                 key = var[2:-1]
                 # Replace the entire ${...} sequence with the value named
-                result = str.replace(result, var, self.get(key).value)
+                result = result.replace(var, self.get(key).value)
             except AttributeError:
                 raise RuntimeError("no such environment variable "
                                    "'%s' in '%s'" % (key, result))
