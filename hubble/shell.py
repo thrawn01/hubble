@@ -165,8 +165,10 @@ def getEnvironments(args, choice, config):
         env.update(conf)
         # Add the env section
         env.add(dict(config.items(section)), section)
+
+        def f(i):
+            return "opt.%s" % i[0], str(i[1])
         # Add the args to the environment as opt.'<arg_name>'
-        f = lambda i: "opt.%s" % i[0], str(i[1])
         env.add(dict(map(f, vars(args).items())), section)
         # Apply var expansion
         results.append(env.eval())
@@ -224,7 +226,7 @@ def evalArgs(conf, parser):
     # If no default environment set, look for an
     # environment choice on the command line
     if not env:
-        help="The environment defined in ~/.hubblerc to use"
+        help = "The environment defined in ~/.hubblerc to use"
         parser.add_argument('env', nargs='?', metavar='<ENV>',
                             help=help)
         (arg1, arg2) = parser.parse_known_args()
