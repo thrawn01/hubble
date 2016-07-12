@@ -209,7 +209,7 @@ To support this, you can create a ``.hubblerc`` file in the local directory. Hub
 read this file during invocation and override any global configuration with the local one.
 
 In addition you can set a *default* environment when none is found on the command line. To do this,
-you must define ``default-env`` in the ``[hubble]`` section of the config. 
+you must define ``default-env`` in the ``[hubble]`` section of the config.
 
 For example, create a file called ``.hubblerc`` in the directory called ``~/dev``
 ```
@@ -317,7 +317,7 @@ script. You can find an example of what this script might look like in the
 
 
 ## How about running a command across multiple environments?
-You can define a section in ```~/.hubblerc``` as a meta section. 
+You can define a section in ```~/.hubblerc``` as a meta section.
 The meta section tells hubble to source all the environment variables in the current
 section, then source and run the command for each section listed in the meta list.
 
@@ -349,6 +349,54 @@ a cinder command in lon, ord and dfw environments
 ```
 $ hubble cinder-all list
 ```
+
+## What if multiple environments share some options, but not others?
+Use section inheritance.
+
+Example
+```
+[hubble]
+OS_AUTH_URL=http://auth.thrawn01.org
+OS_USERNAME=global-user
+
+[preprod]
+OS_USERNAME=preprod-user
+
+[preprod-region1]
+%inherit=preprod
+OS_REGION_NAME=region1
+
+[preprod-reigon2]
+%inherit=preprod
+OS_REGION_NAME=region2
+```
+
+This demonstrates nested inheritance; the `preprod-region2` section
+will have options from `preprod` and the global `hubble` section.
+
+### Multiple inheritance
+
+Multiple inheritance is also supported; a single `%inherit` option
+with multiple newline-separated values should be used if
+desired. Option values are resolved in the order they are declared,
+top to bottom, the values of earlier sections taking precedent over
+later sections.
+
+Example
+```
+[parent1]
+spam = eggs
+
+[parent2]
+spam = bacon
+
+[child]
+%inherit =
+  parent1
+  parent2
+```
+
+The value of `spam` in the `child` section is `eggs`.
 
 ## How about running an arbitrary command?
 When executing remote ssh commands with tools like fabric or dsh the local user
@@ -418,7 +466,7 @@ export PATH="~/bin;$PATH"
 ln -s /usr/bin/hubble ~/bin/nova
 ln -s /usr/bin/hubble ~/bin/swiftly
 ```
-When hubble is executed, it will inspect the name it was invoked as (in 
+When hubble is executed, it will inspect the name it was invoked as (in
 this case the linked name) and attempt to execute *that* name as the command.
 If executables for nova and swiftly are installed in ``/usr/bin``; Your done!
 
@@ -474,4 +522,3 @@ $ supernova prod list
 * **${opt.option}** - The argument passed in via the -o|--option command line argument
 * **${opt.env}** - The environment name passed in as a command line argument
 * **${opt.debug}** - 'True' if --debug was used on the command line else 'False'
-

@@ -12,18 +12,77 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from six.moves.configparser import NoSectionError, NoOptionError
-from six.moves.configparser import RawConfigParser
+from six import string_types
+from configparser import NoSectionError, NoOptionError
+from configparser import RawConfigParser, _UNSET
+from itertools import chain
 import os
 
-class SafeConfigParser(RawConfigParser):
+
+class ListConfigParser(RawConfigParser):
+    def __init__(self, *args, **kwargs):
+        super(ListConfigParser, self).__init__(*args, **kwargs)
+
+        self._converters.update(
+            list=self.list_converter
+        )
+
+    @staticmethod
+    def list_converter(value):
+        if isinstance(value, string_types):
+            value = filter(None, (i.strip() for i in value.splitlines()))
+        return list(value)
+
+
+class InheritanceConfigParser(ListConfigParser):
+    def _supersections(self, section):
+        try:
+            section_names = self.list_converter(self._sections[section]['%inherit'])
+        except KeyError:
+            return []
+
+        sections = [self._sections[section] for section in section_names]
+
+        # nested inheritance
+        hypersections = (self._supersections(section_name) for section_name in section_names)
+
+        return chain(sections, *hypersections)
+
+
+    def _unify_values(self, section, vars):
+        '''Inject supersections into the correct position in the inheritance
+        chain.
+
+        '''
+        chain = super(InheritanceConfigParser, self)._unify_values(section, vars)
+
+        chain.maps[2:2] = self._supersections(section)
+
+        return chain
+
+    def items(self, section=_UNSET, raw=False, vars=None):
+        '''This is actually an upstream bug, imo.
+
+        '''
+
+        d = self._unify_values(section, vars)
+
+        value_getter = lambda option: self._interpolation.before_get(self,
+            section, option, d[option], d)
+        if raw:
+            value_getter = lambda option: d[option]
+
+        return [(self.optionxform(option), value_getter(option)) for option in d.keys()]
+
+
+class SafeConfigParser(InheritanceConfigParser):
     """ Simple subclass to add the safeGet() method """
     def getError(self):
         return None
 
     def safeGet(self, section, key):
         try:
-            return RawConfigParser.get(self, section, key)
+            return super(SafeConfigParser, self).get(section, key)
         except (NoSectionError, NoOptionError):
             return None
 
@@ -45,20 +104,20 @@ def openFd(file):
     except IOError:
         return None
 
-def readConfigs(files=None):
+def readConfigs(files=None, default_section=None):
     """ Given a list of file names, return a list of handles to succesfully opened files"""
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
         return ErrorConfigParser("Unable to find config files in these"
                                  " locations [%s]" % ", ".join(files))
-    return parseConfigs([openFd(file) for file in files])
+    return parseConfigs([openFd(file) for file in files], default_section)
 
 
-def parseConfigs(fds):
+def parseConfigs(fds, default_section=None):
     """ Given a list of file handles, parse all the files with ConfigParser() """
     # Read the config file
-    config = SafeConfigParser()
+    config = SafeConfigParser(default_section=default_section)
     # Don't transform (lowercase) the key values
     config.optionxform = str
     # Read all the file handles passed

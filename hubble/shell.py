@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from subprocess import check_output, CalledProcessError, Popen, PIPE
-from six.moves.configparser import NoSectionError
+from configparser import NoSectionError
 from hubble.config import readConfigs
 import argparse
 import textwrap
@@ -94,7 +94,7 @@ class Env(dict):
                 var = match.group(0)
                 key = var[2:-1]
                 # Replace the entire ${...} sequence with the value named
-                result = str.replace(result, var, self.get(key).value)
+                result = result.replace(var, self.get(key).value)
             except AttributeError:
                 raise RuntimeError("no such environment variable "
                                    "'%s' in '%s'" % (key, result))
@@ -147,12 +147,6 @@ def getEnvironments(args, choice, config):
     sections = [choice]
     results = []
     conf = Env()
-
-    try:
-        # Get the default variables if exists
-        conf.add(dict(config.items('hubble')), 'hubble')
-    except NoSectionError:
-        pass
 
     # Merge in the requested environment
     conf.add(dict(config.items(choice)), choice)
@@ -219,7 +213,7 @@ def cmdPath(cmd, conf):
 
 
 def evalArgs(conf, parser):
-    env = conf.safeGet('hubble', 'default-env')
+    env = conf.safeGet(conf.default_section, 'default-env')
     # If no default environment set, look for an
     # environment choice on the command line
     if not env:
@@ -256,7 +250,7 @@ def main():
 
     try:
         # Read the configs
-        conf = readConfigs()
+        conf = readConfigs(default_section='hubble')
         # Evaluate the command line arguments and return our args
         # the commands args and the environment choice the user made
         hubble_args, other_args, choice = evalArgs(conf, parser)
