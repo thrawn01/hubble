@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/thrawn01/hubble.svg?branch=master)](https://travis-ci.org/thrawn01/hubble)
+
 # What is this hubble thing?
 *hubble* is an environment variable manager for tools like cinderclient, novaclient,
 swiftclient and swiftly that rely on environment variables for configuration.
