@@ -104,6 +104,7 @@ def openFd(file):
     except IOError:
         return None
 
+
 def readConfigs(files=None, default_section=None):
     """ Given a list of file names, return a list of handles to succesfully opened files"""
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']

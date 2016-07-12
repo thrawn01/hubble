@@ -187,6 +187,7 @@ def toDict(buf):
               " as a 'key=value' string")
         return dict()
 
+
 def run(cmd, env):
     """ Parse the output from the command passed into a dict({'key': 'value'}) """
     if empty(cmd):
@@ -224,6 +225,7 @@ def evalArgs(conf, parser):
     # Return the args with the default environment choice
     (arg1, arg2) = parser.parse_known_args()
     return (arg1, arg2, env)
+
 
 def main():
     logging.basicConfig(format='-- %(message)s')
