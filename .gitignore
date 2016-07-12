@@ -7,3 +7,8 @@ target/
 *.egg-info/
 dist/
 build/
+AUTHORS
+ChangeLog
+.cache/
+.idea/
+.tox/
