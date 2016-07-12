@@ -5,6 +5,8 @@
 # opt-cmd in hubblerc.
 # -----------------------------------------------------------------------------
 
+# flake8: noqa
+
 from __future__ import print_function
 
 from argparse import ArgumentParser

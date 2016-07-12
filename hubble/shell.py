@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from subprocess import check_output, CalledProcessError, Popen, PIPE
 from configparser import NoSectionError
-from hubble.config import readConfigs
+from hubble.config import read_configs
 import argparse
 import textwrap
 import logging
@@ -81,10 +81,10 @@ class Env(dict):
     def eval(self):
         """ Exapand all the ${variable} directives in the collection """
         for key, pair in self.items():
-            self[key].value = self.expandVar(key, pair)
+            self[key].value = self.expand_var(key, pair)
         return self
 
-    def expandVar(self, variable, pair):
+    def expand_var(self, variable, pair):
         """ Find a ${some_var} signature and expand it """
         result = pair.value
         # Find all the ${...}
@@ -99,9 +99,9 @@ class Env(dict):
                 raise RuntimeError("no such environment variable "
                                    "'%s' in '%s'" % (key, result))
         # Expand keyring values if any
-        return self.expandKeyringVar(variable, pair, result)
+        return self.expand_keyring_var(variable, pair, result)
 
-    def expandKeyringVar(self, variable, pair, value):
+    def expand_keyring_var(self, variable, pair, value):
         """ Find 'USE_KEYRING' directives and expand them using the keyring """
         identifier = value.strip()
         if identifier.startswith("USE_KEYRING"):
@@ -118,7 +118,7 @@ class Env(dict):
                 return keys.get_password(variable, None)
         return value
 
-    def toDict(self):
+    def to_dict(self):
         """
         Convert the entire collection of Pair() objects to a
         dict({'key': str()}) only where export == True
@@ -144,7 +144,7 @@ def green(msg):
     return "\033[92m%s\033[0m" % msg
 
 
-def getEnvironments(args, choice, config):
+def get_environments(args, choice, config):
     """ Get the environment collection requested from args.env """
     sections = [choice]
     results = []
@@ -175,7 +175,7 @@ def getEnvironments(args, choice, config):
     return results
 
 
-def toDict(buf):
+def to_dict(buf):
     """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
     try:
         # Convert the bytes to string
@@ -204,12 +204,12 @@ def run(cmd, env):
     # Execute the command with the current env
     # overlaid with our built environment
     environ = os.environ.copy()
-    environ.update(env.toDict())
+    environ.update(env.to_dict())
     # Use of undocumented 'env' option on check_output
-    return toDict(check_output(cmd, shell=True, env=environ))
+    return to_dict(check_output(cmd, shell=True, env=environ))
 
 
-def cmdPath(cmd, conf):
+def cmd_path(cmd, conf):
     """ Find the 'cmd' in the config, or default to /usr/bin/'cmd' """
     basename = os.path.basename(cmd)
     try:
@@ -221,8 +221,8 @@ def cmdPath(cmd, conf):
     return "/usr/bin/%s" % basename
 
 
-def evalArgs(conf, parser):
-    env = conf.safeGet(conf.default_section, 'default-env')
+def eval_args(conf, parser):
+    env = conf.safe_get(conf.default_section, 'default-env')
     # If no default environment set, look for an
     # environment choice on the command line
     if not env:
@@ -262,18 +262,18 @@ def main():
 
     try:
         # Read the configs
-        conf = readConfigs(default_section='hubble')
+        conf = read_configs(default_section='hubble')
         # Evaluate the command line arguments and return our args
         # the commands args and the environment choice the user made
-        hubble_args, other_args, choice = evalArgs(conf, parser)
+        hubble_args, other_args, choice = eval_args(conf, parser)
         # Do this so we pass along the -h to the command
         # if we are using invocation discovery
         if hubble_args.help and (choice is None):
             return parser.print_help()
 
         # If there was an error
-        if conf.getError():
-            print(conf.getError())
+        if conf.get_error():
+            print(conf.get_error())
             return 1
 
         if choice is None:
@@ -288,7 +288,7 @@ def main():
             log.setLevel(logging.DEBUG)
 
         # Read environment values from config files
-        environments = getEnvironments(hubble_args, choice, conf)
+        environments = get_environments(hubble_args, choice, conf)
         processes = []
         for env in environments:
             # Populate environment vars by running opt-cmd
@@ -311,7 +311,7 @@ def main():
             # If our invocation name is not 'hubble'
             if not sys.argv[0].endswith('hubble'):
                 # Use the invocation name as our 'cmd'
-                env.add({'cmd': cmdPath(sys.argv[0], conf)})
+                env.add({'cmd': cmd_path(sys.argv[0], conf)})
 
             if hubble_args.execute:
                 # Use the command provided
@@ -334,7 +334,7 @@ def main():
             # Grab a copy of the local environment and inject it into
             # our environment
             environ = os.environ.copy()
-            environ.update(env.toDict())
+            environ.update(env.to_dict())
 
             try:
                 # Run the requested command
