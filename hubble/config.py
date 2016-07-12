@@ -82,7 +82,7 @@ class SafeConfigParser(InheritanceConfigParser):
 
     def safeGet(self, section, key):
         try:
-            return RawConfigParser.get(self, section, key)
+            return super(SafeConfigParser, self).get(section, key)
         except (NoSectionError, NoOptionError):
             return None
 
