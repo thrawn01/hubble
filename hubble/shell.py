@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 from subprocess import check_output, CalledProcessError, Popen, PIPE
-from ConfigParser import NoSectionError
+from six.moves.configparser import NoSectionError
 from hubble.config import readConfigs
-import collections
 import argparse
 import textwrap
 import logging
@@ -27,7 +26,7 @@ import os
 
 try:
     # Not everyone needs keyring
-    import keys
+    from hubble import keys
 except ImportError:
     keys = None
 
@@ -66,12 +65,12 @@ class Env(dict):
             pass
 
     def update(self, envs):
-        for key, pair in envs.iteritems():
+        for key, pair in envs.items():
             self[key] = pair
 
     def add(self, envs, section=None):
         """ Adds or removes items in the dict 'envs' to the collection """
-        for key, value in envs.iteritems():
+        for key, value in envs.items():
             # if the value is empty
             if empty(value):
                 # Delete the key from the env
@@ -81,7 +80,7 @@ class Env(dict):
 
     def eval(self):
         """ Exapand all the ${variable} directives in the collection """
-        for key, pair in self.iteritems():
+        for key, pair in self.items():
             self[key].value = self.expandVar(key, pair)
         return self
 
@@ -124,13 +123,13 @@ class Env(dict):
         Convert the entire collection of Pair() objects to a
         dict({'key': str()}) only where export == True
         """
-        return dict([(key, value.value) for key, value in self.iteritems() if value.export])
+        return dict([(key, value.value) for key, value in self.items() if value.export])
 
     def __repr__(self):
         """ Pretty print the collection """
         # Calculate the max length of any key, and indent by that amount
         fmt = "%{0}s: %s".format(len(max(self.keys(), key=len)))
-        return '\n'.join([fmt % (key, value.value) for key, value in self.iteritems()])
+        return '\n'.join([fmt % (key, value.value) for key, value in self.items()])
 
 
 def empty(value):
@@ -177,18 +176,20 @@ def getEnvironments(args, choice, config):
     return results
 
 
-def toDict(string):
+def toDict(buf):
     """ Parse a string of 'key=value' into a dict({'key': 'value'}) """
     try:
-        if len(string) == 0:
-            print("-- Warning: executable specifed by 'opt-cmd' did not return"
+        # Convert the bytes to string
+        buf = buf.decode('utf-8').rstrip()
+
+        if len(buf) == 0:
+            print("-- Warning: executable specified by 'opt-cmd' did not return"
                   " any key=values, environment not updated")
             return dict()
         return dict([[i.strip() for i in line.split('=', 1)]
-                for line in string.rstrip().split('\n')])
+                     for line in buf.rstrip().split('\n')])
     except ValueError:
-        print(string)
-        print("-- Output from 'opt-cmd' was not parsable"
+        print("-- Output from 'opt-cmd' was not parsed"
               " as a 'key=value' string")
         return dict()
 
@@ -332,7 +333,7 @@ def main():
                     stderr=PIPE,
                     env=environ)
                 processes.append((p, env['section'].value))
-            except OSError, e:
+            except OSError as e:
                 if e.errno == 2:
                     print("-- No such executable '%s', you must specify the executable "
                         "in the [hubble-commands] section of the config (See README)"
@@ -344,13 +345,13 @@ def main():
                 print("-- [%s] --" % green(env))
             # Wait for the command to complete
             stdout, stderr = p.communicate()
-            sys.stdout.write(stdout)
-            sys.stderr.write(stderr)
+            sys.stdout.write(stdout.decode('utf-8'))
+            sys.stderr.write(stderr.decode('utf-8'))
 
-    except (RuntimeError, NoSectionError), e:
+    except (RuntimeError, NoSectionError) as e:
         log.critical(e)
         return 1
-    except CalledProcessError, e:
+    except CalledProcessError as e:
         log.critical(e.output)
         log.critical(e)
         return 1

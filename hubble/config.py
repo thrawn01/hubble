@@ -12,18 +12,18 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from ConfigParser import NoSectionError, NoOptionError
-import ConfigParser
+from six.moves.configparser import NoSectionError, NoOptionError
+from six.moves.configparser import RawConfigParser
 import os
 
-class SafeConfigParser(ConfigParser.RawConfigParser):
+class SafeConfigParser(RawConfigParser):
     """ Simple subclass to add the safeGet() method """
     def getError(self):
         return None
 
     def safeGet(self, section, key):
         try:
-            return ConfigParser.RawConfigParser.get(self, section, key)
+            return RawConfigParser.get(self, section, key)
         except (NoSectionError, NoOptionError):
             return None
 
@@ -79,11 +79,9 @@ def validateVariableExists(args):
     try:
         # attempt to get the variable from the requested environment
         conf.get(args.env, args.variable)
-    except NoSectionError, e:
+    except NoSectionError as e:
         raise RuntimeError("No such environment [%s] in '%s'" %
                            (args.env, conf.name))
     except NoOptionError:
         raise RuntimeError("No such variable '%s' for environment [%s] exists"
                            " in '%s'" % (args.variable, args.env, conf.name))
-
-
