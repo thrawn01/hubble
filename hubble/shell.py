@@ -224,8 +224,9 @@ def evalArgs(conf, parser):
     # If no default environment set, look for an
     # environment choice on the command line
     if not env:
+        help="The environment defined in ~/.hubblerc to use"
         parser.add_argument('env', nargs='?', metavar='<ENV>',
-                help="The environment defined in ~/.hubblerc to use")
+                            help=help)
         (arg1, arg2) = parser.parse_known_args()
         return (arg1, arg2, arg1.env)
     # Return the args with the default environment choice
@@ -236,9 +237,10 @@ def evalArgs(conf, parser):
 def main():
     logging.basicConfig(format='-- %(message)s')
     log.setLevel(logging.CRITICAL)
+    formatter_class = argparse.RawDescriptionHelpFormatter
     parser = argparse.ArgumentParser(add_help=False,
-         formatter_class=argparse.RawDescriptionHelpFormatter,
-         description = textwrap.dedent("""\
+                                     formatter_class=formatter_class,
+                                     description=textwrap.dedent("""\
             Hubble - An environment variable manager for tools like
             cinderclient, novaclient, swiftclient and swiftly that rely
             on environment variables for configuration.
@@ -247,14 +249,14 @@ def main():
             .hubblerc in a local directory to overide ~/.hubblerc
             """))
     parser.add_argument('-o', '--option',
-            help="an argument to pass to the opt-cmd")
+                        help="an argument to pass to the opt-cmd")
     parser.add_argument('-e', '--execute', metavar='COMMAND',
-            help="execute a command in the specified environment")
+                        help="execute a command in the specified environment")
     parser.add_argument('-h', '--help', action='store_true',
-            help="show this help message and exit")
+                        help="show this help message and exit")
     parser.add_argument('-d', '--debug', action='store_true',
-            help="Adds CINDERCLIENT_DEBUG=1 to the environment and passes"
-            " --debug to selected command")
+                        help="Adds CINDERCLIENT_DEBUG=1 to the environment "
+                        "and passes --debug to selected command")
 
     try:
         # Read the configs
@@ -335,9 +337,9 @@ def main():
             try:
                 # Run the requested command
                 p = Popen([env['cmd'].value] + other_args,
-                    stdout=PIPE,
-                    stderr=PIPE,
-                    env=environ)
+                          stdout=PIPE,
+                          stderr=PIPE,
+                          env=environ)
                 processes.append((p, env['section'].value))
             except OSError as e:
                 if e.errno == 2:
