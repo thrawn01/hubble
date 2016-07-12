@@ -69,7 +69,8 @@ class TestHubble(unittest.TestCase):
         self.assertEqual(empty("   r"), False)
 
     def test_toDict(self):
-        self.assertEqual(toDict(b"key=value\nfoo=bar\n"), {'key': 'value', 'foo': 'bar'})
+        expected = {'key': 'value', 'foo': 'bar'}
+        self.assertEqual(toDict(b"key=value\nfoo=bar\n"), expected)
 
     def test_run(self):
         env = run('echo "USER=thrawn\nSHELL=bash"', Env())

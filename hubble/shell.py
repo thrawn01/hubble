@@ -123,13 +123,15 @@ class Env(dict):
         Convert the entire collection of Pair() objects to a
         dict({'key': str()}) only where export == True
         """
-        return dict([(key, value.value) for key, value in self.items() if value.export])
+        return dict([(key, value.value) for key, value in self.items()
+                     if value.export])
 
     def __repr__(self):
         """ Pretty print the collection """
         # Calculate the max length of any key, and indent by that amount
         fmt = "%{0}s: %s".format(len(max(self.keys(), key=len)))
-        return '\n'.join([fmt % (key, value.value) for key, value in self.items()])
+        return '\n'.join([fmt % (key, value.value) for key, value in
+                          self.items()])
 
 
 def empty(value):
@@ -164,7 +166,8 @@ def getEnvironments(args, choice, config):
         # Add the env section
         env.add(dict(config.items(section)), section)
         # Add the args to the environment as opt.'<arg_name>'
-        env.add(dict(map(lambda i: ("opt.%s" % i[0], str(i[1])), vars(args).items())), section)
+        f = lambda i: "opt.%s" % i[0], str(i[1])
+        env.add(dict(map(f, vars(args).items())), section)
         # Apply var expansion
         results.append(env.eval())
     return results
@@ -177,8 +180,8 @@ def toDict(buf):
         buf = buf.decode('utf-8').rstrip()
 
         if len(buf) == 0:
-            print("-- Warning: executable specified by 'opt-cmd' did not return"
-                  " any key=values, environment not updated")
+            print("-- Warning: executable specified by 'opt-cmd' did not "
+                  "return any key=values, environment not updated")
             return dict()
         return dict([[i.strip() for i in line.split('=', 1)]
                      for line in buf.rstrip().split('\n')])
@@ -189,7 +192,10 @@ def toDict(buf):
 
 
 def run(cmd, env):
-    """ Parse the output from the command passed into a dict({'key': 'value'}) """
+    """Parse the output from the command passed into a dict({'key':
+    'value'})
+
+    """
     if empty(cmd):
         return {}
 
@@ -285,8 +291,9 @@ def main():
             # if -o was passed on the commandline
             if hubble_args.option:
                 if 'opt-cmd' not in env:
-                    raise RuntimeError("provided -o|--option, but 'opt-cmd' is not defined in"
-                            " '%s' section" % env['section'].value)
+                    message = "provided -o|--option, but 'opt-cmd' is not " \
+                              "defined in '%s' section" % env['section'].value
+                    raise RuntimeError(message)
                 env.add(run(env['opt-cmd'].value, env))
 
             # Populate environment vars by running the env-cmd if it exists
@@ -308,9 +315,11 @@ def main():
 
             # At this point we should know our 'cmd' to run
             if 'cmd' not in env:
-                raise RuntimeError("Please specify a 'cmd' somewhere in your config")
+                raise RuntimeError("Please specify a 'cmd' somewhere in "
+                                   "your config")
 
-            # If --debug; print out our env config and pass along the --debug arg
+            # If --debug; print out our env config and pass along the
+            # --debug arg
             if hubble_args.debug:
                 # For cinder client debug
                 if env['cmd'].endswith('cinder'):
@@ -318,7 +327,8 @@ def main():
                 print("%r\n" % env)
                 other_args.insert(0, '--debug')
 
-            # Grab a copy of the local environment and inject it into our environment
+            # Grab a copy of the local environment and inject it into
+            # our environment
             environ = os.environ.copy()
             environ.update(env.toDict())
 
@@ -331,10 +341,11 @@ def main():
                 processes.append((p, env['section'].value))
             except OSError as e:
                 if e.errno == 2:
-                    print("-- No such executable '%s', you must specify the executable "
-                        "in the [hubble-commands] section of the config (See README)"
-                        % env['cmd'].value)
-                raise RuntimeError("exec failed '%s' - %s" % (env['cmd'].value, e))
+                    print("-- No such executable '%s', you must specify the "
+                          "executable in the [hubble-commands] section of the "
+                          "config (See README)" % env['cmd'].value)
+                message = "exec failed '%s' - %s" % (env['cmd'].value, e)
+                raise RuntimeError(message)
 
         for p, env in processes:
             if len(environments) != 1:

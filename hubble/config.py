@@ -106,7 +106,10 @@ def openFd(file):
 
 
 def readConfigs(files=None, default_section=None):
-    """ Given a list of file names, return a list of handles to succesfully opened files"""
+    """Given a list of file names, return a list of handles to succesfully
+    opened files
+
+    """
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
@@ -116,7 +119,10 @@ def readConfigs(files=None, default_section=None):
 
 
 def parseConfigs(fds, default_section=None):
-    """ Given a list of file handles, parse all the files with ConfigParser() """
+    """Given a list of file handles, parse all the files with
+    ConfigParser()
+
+    """
     # Read the config file
     config = SafeConfigParser(default_section=default_section)
     # Don't transform (lowercase) the key values
