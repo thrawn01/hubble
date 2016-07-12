@@ -372,9 +372,29 @@ OS_REGION_NAME=region2
 This demonstrates nested inheritance; the `preprod-region2` section
 will have options from `preprod` and the global `hubble` section.
 
+### Multiple inheritance
+
 Multiple inheritance is also supported; a single `%inherit` option
 with multiple newline-separated values should be used if
-desired. Option values are resolved left-to-right.
+desired. Option values are resolved in the order they are declared,
+top to bottom, the values of earlier sections taking precedent over
+later sections.
+
+Example
+```
+[parent1]
+spam = eggs
+
+[parent2]
+spam = bacon
+
+[child]
+%inherit =
+  parent1
+  parent2
+```
+
+The value of `spam` in the `child` section is `eggs`.
 
 ## How about running an arbitrary command?
 When executing remote ssh commands with tools like fabric or dsh the local user
