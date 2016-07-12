@@ -13,8 +13,8 @@
 #   limitations under the License.
 
 
-from hubble.shell import getEnvironments, Env, run, toDict, empty
-from hubble.config import parseConfigs
+from hubble.shell import get_environments, Env, run, to_dict, empty
+from hubble.config import parse_configs
 from six.moves import StringIO
 import unittest
 import argparse
@@ -30,14 +30,14 @@ class TestEnv(unittest.TestCase):
         self.assertEqual(env['string'].value, "My name is Derrick Wippler")
         self.assertEqual(env['string'].section, "section")
 
-    def test_env_toDict(self):
+    def test_env_to_dict(self):
         env = Env()
         env.set('first', 'Derrick', 'section')
         env.set('last', 'Wippler', 'section')
         env.set('no-export', 'wat', 'section', export=False)
-        self.assertEqual(env.toDict(), {'first': 'Derrick', 'last': 'Wippler'})
+        self.assertEqual(env.to_dict(), {'first': 'Derrick', 'last': 'Wippler'})
 
-    def test_getEnvironments(self):
+    def test_get_environments(self):
         parser = argparse.ArgumentParser()
         parser.add_argument('env')
         parser.add_argument('--user', default='', required=False)
@@ -51,8 +51,9 @@ class TestEnv(unittest.TestCase):
                         "FIRST=Derrick\n"
                         "last=Wippler\n")
         file.name = "test-config.ini"
-        config = parseConfigs([file], default_section='hubble')
-        env = getEnvironments(args, 'name', config)
+        config = parse_configs([file], default_section='hubble')
+        env = get_environments(args, 'name', config)
+
         self.assertIn('name', env[0])
         self.assertEqual(env[0]['name'].value, 'My name is Derrick Wippler')
 
@@ -68,8 +69,9 @@ class TestHubble(unittest.TestCase):
         self.assertEqual(empty("   "), True)
         self.assertEqual(empty("   r"), False)
 
-    def test_toDict(self):
-        self.assertEqual(toDict(b"key=value\nfoo=bar\n"), {'key': 'value', 'foo': 'bar'})
+    def test_to_dict(self):
+        expected = {'key': 'value', 'foo': 'bar'}
+        self.assertEqual(to_dict(b"key=value\nfoo=bar\n"), expected)
 
     def test_run(self):
         env = run('echo "USER=thrawn\nSHELL=bash"', Env())

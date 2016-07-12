@@ -76,11 +76,11 @@ class InheritanceConfigParser(ListConfigParser):
 
 
 class SafeConfigParser(InheritanceConfigParser):
-    """ Simple subclass to add the safeGet() method """
-    def getError(self):
+    """ Simple subclass to add the safe_get() method """
+    def get_error(self):
         return None
 
-    def safeGet(self, section, key):
+    def safe_get(self, section, key):
         try:
             return super(SafeConfigParser, self).get(section, key)
         except (NoSectionError, NoOptionError):
@@ -93,29 +93,36 @@ class ErrorConfigParser(SafeConfigParser):
         SafeConfigParser.__init__(self)
         self.msg = msg
 
-    def getError(self):
+    def get_error(self):
         return self.msg
 
 
-def openFd(file):
+def open_fd(file):
     """ Open the file if possible, else return None """
     try:
         return open(file)
     except IOError:
         return None
 
-def readConfigs(files=None, default_section=None):
-    """ Given a list of file names, return a list of handles to succesfully opened files"""
+
+def read_configs(files=None, default_section=None):
+    """Given a list of file names, return a list of handles to succesfully
+    opened files
+
+    """
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
     if not any([os.path.exists(rc) for rc in files]):
         return ErrorConfigParser("Unable to find config files in these"
                                  " locations [%s]" % ", ".join(files))
-    return parseConfigs([openFd(file) for file in files], default_section)
+    return parse_configs([open_fd(file) for file in files], default_section)
 
 
-def parseConfigs(fds, default_section=None):
-    """ Given a list of file handles, parse all the files with ConfigParser() """
+def parse_configs(fds, default_section=None):
+    """Given a list of file handles, parse all the files with
+    ConfigParser()
+
+    """
     # Read the config file
     config = SafeConfigParser(default_section=default_section)
     # Don't transform (lowercase) the key values
@@ -129,11 +136,11 @@ def parseConfigs(fds, default_section=None):
     return config
 
 
-def validateVariableExists(args):
+def validate_variable_exists(args):
     """ Throw is the env and the variable does not exist in the config """
-    conf = readConfigs()
-    if conf.getError():
-        raise RuntimeError(conf.getError())
+    conf = read_configs()
+    if conf.get_error():
+        raise RuntimeError(conf.get_error())
 
     try:
         # attempt to get the variable from the requested environment

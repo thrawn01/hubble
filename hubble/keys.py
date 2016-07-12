@@ -18,7 +18,7 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from hubble.config import validateVariableExists
+from hubble.config import validate_variable_exists
 import keyring
 import getpass
 
@@ -52,7 +52,7 @@ def main():
             password = None
             try:
                 if args.variable:
-                    validateVariableExists(args)
+                    validate_variable_exists(args)
                 password = getpass.getpass(
                     'Enter Credential (CTRL-D to abort) > ')
             except RuntimeError as e:
