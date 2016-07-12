@@ -23,7 +23,7 @@ class SafeConfigParser(RawConfigParser):
 
     def safeGet(self, section, key):
         try:
-            return super(SafeConfigParser, self).get(section, key)
+            return RawConfigParser.get(self, section, key)
         except (NoSectionError, NoOptionError):
             return None
 
