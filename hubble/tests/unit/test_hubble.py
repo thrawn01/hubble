@@ -12,12 +12,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-
-from hubble.shell import get_environments, Env, run, to_dict, empty
-from hubble.config import parse_configs
-from six.moves import StringIO
-import unittest
 import argparse
+import unittest
+
+from six.moves import StringIO
+
+from hubble.config import parse_configs
+from hubble.shell import empty, Env, get_environments, run, to_dict
 
 
 class TestEnv(unittest.TestCase):
@@ -35,7 +36,8 @@ class TestEnv(unittest.TestCase):
         env.set('first', 'Derrick', 'section')
         env.set('last', 'Wippler', 'section')
         env.set('no-export', 'wat', 'section', export=False)
-        self.assertEqual(env.to_dict(), {'first': 'Derrick', 'last': 'Wippler'})
+        expected = {'first': 'Derrick', 'last': 'Wippler'}
+        self.assertEqual(env.to_dict(), expected)
 
     def test_get_environments(self):
         parser = argparse.ArgumentParser()

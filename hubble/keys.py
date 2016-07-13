@@ -18,9 +18,11 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from hubble.config import validate_variable_exists
-import keyring
 import getpass
+
+import keyring
+
+from hubble.config import validate_variable_exists
 
 
 def main():

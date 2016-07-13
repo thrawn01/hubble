@@ -12,11 +12,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from six import string_types
-from configparser import NoSectionError, NoOptionError
-from configparser import RawConfigParser, _UNSET
+from configparser import _UNSET, NoOptionError, NoSectionError, RawConfigParser
 from itertools import chain
 import os
+
+from six import string_types
 
 
 class ListConfigParser(RawConfigParser):
@@ -37,42 +37,43 @@ class ListConfigParser(RawConfigParser):
 class InheritanceConfigParser(ListConfigParser):
     def _supersections(self, section):
         try:
-            section_names = self.list_converter(self._sections[section]['%inherit'])
+            section_names = self._sections[section]['%inherit']
+            section_names = self.list_converter(section_names)
         except KeyError:
             return []
 
         sections = [self._sections[section] for section in section_names]
 
         # nested inheritance
-        hypersections = (self._supersections(section_name) for section_name in section_names)
+        hypersections = (self._supersections(section_name) for
+                         section_name in section_names)
 
         return chain(sections, *hypersections)
-
 
     def _unify_values(self, section, vars):
         '''Inject supersections into the correct position in the inheritance
         chain.
 
         '''
-        chain = super(InheritanceConfigParser, self)._unify_values(section, vars)
+        chain = super(InheritanceConfigParser, self)._unify_values(section, vars)  # noqa: E501
 
         chain.maps[2:2] = self._supersections(section)
 
         return chain
 
     def items(self, section=_UNSET, raw=False, vars=None):
-        '''This is actually an upstream bug, imo.
-
-        '''
+        # this is actually an upstream bug imo
 
         d = self._unify_values(section, vars)
 
+        # this is copy-paste from stdlib
         value_getter = lambda option: self._interpolation.before_get(self,
-            section, option, d[option], d)
+            section, option, d[option], d)  # noqa: E128
         if raw:
             value_getter = lambda option: d[option]
 
-        return [(self.optionxform(option), value_getter(option)) for option in d.keys()]
+        return [(self.optionxform(option), value_getter(option)) for
+                option in d.keys()]
 
 
 class SafeConfigParser(InheritanceConfigParser):
@@ -145,7 +146,7 @@ def validate_variable_exists(args):
     try:
         # attempt to get the variable from the requested environment
         conf.get(args.env, args.variable)
-    except NoSectionError as e:
+    except NoSectionError:
         raise RuntimeError("No such environment [%s] in '%s'" %
                            (args.env, conf.name))
     except NoOptionError:
