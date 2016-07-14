@@ -12,10 +12,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from configparser import _UNSET, NoOptionError, NoSectionError, RawConfigParser
 from itertools import chain
 import os
 
+from backports.configparser import _UNSET, \
+    NoOptionError, NoSectionError, RawConfigParser
 from six import string_types
 
 
