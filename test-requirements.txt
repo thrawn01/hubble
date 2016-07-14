@@ -1,4 +1,9 @@
-flake8>=2.5.4
 pytest>=2.9.2
+
+# pytest plugins
+pytest-flake8>=0.5
+pytest-cov>=2.3.0
+
+# flake8 plugins
 pep8-naming>=0.4.1
 flake8-import-order>=0.8
