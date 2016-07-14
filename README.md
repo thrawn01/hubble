@@ -1,3 +1,4 @@
+[![Coverage Status](https://coveralls.io/repos/github/thrawn01/hubble/badge.svg)](https://coveralls.io/github/thrawn01/hubble)
 [![Build Status](https://travis-ci.org/thrawn01/hubble.svg?branch=master)](https://travis-ci.org/thrawn01/hubble)
 
 # What is this hubble thing?
