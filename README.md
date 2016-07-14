@@ -1,4 +1,4 @@
-[![Coverage Status](https://img.shields.io/coveralls/thrawn01/hubble.svg)]((https://coveralls.io/github/thrawn01/hubble)
+[![Coverage Status](https://img.shields.io/coveralls/thrawn01/hubble.svg)](https://coveralls.io/github/thrawn01/hubble)
 [![Build Status](https://img.shields.io/travis/thrawn01/hubble/master.svg)](https://travis-ci.org/thrawn01/hubble)
 
 # What is this hubble thing?
