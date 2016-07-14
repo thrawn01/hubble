@@ -17,3 +17,5 @@ matrix:
       env: TOXENV=py35
     - python: 3.5
       env: TOXENV=flake8
+    - python: 3.5
+      env: TOXENV=coveralls
