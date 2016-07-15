@@ -103,9 +103,9 @@ class ErrorConfigParser(SafeConfigParser):
 
 def open_fd(file):
     """ Open the file if possible, else return None """
+    if not isinstance(file, string_types):
+        return file
     try:
-        if isinstance(file, StringIO):
-            return file
         return open(file)
     except IOError:
         return None
@@ -115,7 +115,7 @@ def exists(obj):
     """Returns true if obj is a StringIO or if the path exists """
     if isinstance(obj, StringIO):
         return True
-    return os.pathy.exists(obj)
+    return os.path.exists(obj)
 
 
 def read_configs(files=None, default_section=None):
