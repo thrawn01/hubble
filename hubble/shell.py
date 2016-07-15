@@ -270,6 +270,7 @@ def eval_args(conf, parser):
 
 def execute_environment(conf, env, hubble_args, other_args):
     cmd = get_cmd(conf, env, hubble_args)
+    cmd = cmd + other_args
 
     # If --debug; print out our env config and pass along the
     # --debug arg
@@ -287,7 +288,7 @@ def execute_environment(conf, env, hubble_args, other_args):
 
     try:
         # Run the requested command
-        p = Popen([env['cmd'].value] + other_args,
+        p = Popen(cmd,
                   stdout=PIPE,
                   stderr=PIPE,
                   env=environ)
