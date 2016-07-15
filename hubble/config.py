@@ -14,7 +14,6 @@
 
 from configparser import _UNSET, \
     NoOptionError, NoSectionError, RawConfigParser
-
 from io import StringIO
 from itertools import chain
 import os
