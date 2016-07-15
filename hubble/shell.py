@@ -188,6 +188,8 @@ def get_environments(args, choice, config):
         # Add the args to the environment as opt.'<arg_name>'
         env.add(dict(map(f, vars(args).items())), section)
 
+        env.eval()
+
         # Populate environment vars by running opt-cmd
         # if -o was passed on the commandline
         if 'opt-cmd' in env:
@@ -198,7 +200,7 @@ def get_environments(args, choice, config):
             env.add(run(env['env-cmd'].value, env))
 
         # Apply var expansion
-        results.append(env.eval())
+        results.append(env)
     return results
 
 
