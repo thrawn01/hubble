@@ -12,12 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from hubble.shell import main
-
 from io import StringIO
+import os
 import tempfile
 import unittest
-import os
+
+from hubble.shell import main
 
 
 def safe_eval(io_out):

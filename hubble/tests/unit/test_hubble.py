@@ -12,12 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from hubble.shell import empty, Env, get_environments, run, to_dict
-from hubble.config import parse_configs
-
-from io import StringIO
 import argparse
+from io import StringIO
 import unittest
+
+from hubble.config import parse_configs
+from hubble.shell import empty, Env, get_environments, run, to_dict
 
 
 class TestEnv(unittest.TestCase):

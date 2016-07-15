@@ -14,17 +14,16 @@
 
 from __future__ import print_function
 
-from hubble.config import read_configs
-
-from configparser import NoOptionError, NoSectionError
-from subprocess import check_output, PIPE, Popen
 import argparse
-import textwrap
+from configparser import NoOptionError, NoSectionError
 import logging
-import sys
 import os
 import re
+from subprocess import check_output, PIPE, Popen
+import sys
+import textwrap
 
+from hubble.config import read_configs
 
 try:
     # Not everyone needs keyring
