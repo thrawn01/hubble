@@ -155,7 +155,7 @@ def get_cmd(argv, conf, env, hubble_args):
         return hubble_args.execute
 
     try:
-        return env['cmd']
+        return env['cmd'].value
     except KeyError:
         raise RuntimeError("Please specify a 'cmd' somewhere in "
                            "your config")
@@ -270,9 +270,8 @@ def execute_environment(cmd, env, hubble_args, other_args):
     # --debug arg
     if hubble_args.debug:
         # For cinder client debug
-        if cmd.value.endswith('cinder'):
+        if cmd.endswith('cinder'):
             env.add({'CINDERCLIENT_DEBUG': '1'})
-        env.add({'cmd': cmd.value})
         print("%r\n" % env)
         other_args.insert(0, '--debug')
 
@@ -283,7 +282,7 @@ def execute_environment(cmd, env, hubble_args, other_args):
 
     try:
         # Run the requested command
-        p = Popen([cmd.value] + other_args,
+        p = Popen([cmd] + other_args,
                   stdout=PIPE,
                   stderr=PIPE,
                   env=environ)
