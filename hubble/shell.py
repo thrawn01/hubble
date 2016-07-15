@@ -281,7 +281,6 @@ def execute_environment(cmd, env, hubble_args, other_args):
     environ = os.environ.copy()
     environ.update(env.to_dict())
 
-    print(environ)
     try:
         # Run the requested command
         p = Popen([cmd.value] + other_args,
