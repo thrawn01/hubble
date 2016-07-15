@@ -188,6 +188,15 @@ def get_environments(args, choice, config):
         # Add the args to the environment as opt.'<arg_name>'
         env.add(dict(map(f, vars(args).items())), section)
 
+        # Populate environment vars by running opt-cmd
+        # if -o was passed on the commandline
+        if 'opt-cmd' in env:
+            env.add(run(env['opt-cmd'].value, env))
+
+        # Populate environment vars by running the env-cmd if it exists
+        if 'env-cmd' in env:
+            env.add(run(env['env-cmd'].value, env))
+
         # Apply var expansion
         results.append(env.eval())
     return results
@@ -255,19 +264,6 @@ def eval_args(argv, conf, parser):
 
 
 def execute_environment(cmd, env, hubble_args, other_args):
-    # Populate environment vars by running opt-cmd
-    # if -o was passed on the commandline
-    if hubble_args.option:
-        if 'opt-cmd' not in env:
-            log.warning("provided -o|--option, but 'opt-cmd' is not "
-                        "defined in '%s' section" % env['section'].value)
-        else:
-            env.add(run(env['opt-cmd'].value, env))
-
-    # Populate environment vars by running the env-cmd if it exists
-    if 'env-cmd' in env:
-        env.add(run(env['env-cmd'].value, env))
-
     # If --debug; print out our env config and pass along the
     # --debug arg
     if hubble_args.debug:
