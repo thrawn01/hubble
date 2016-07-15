@@ -18,7 +18,7 @@ import argparse
 import logging
 import os
 import re
-from subprocess import CalledProcessError, check_output, PIPE, Popen
+from subprocess import check_output, PIPE, Popen
 import sys
 import textwrap
 
@@ -193,7 +193,7 @@ def get_environments(args, choice, config):
         # if -o was passed on the commandline
         if args.option:
             if 'opt-cmd' not in env:
-                log.warning("provided -o|--option, but 'opt-cmd' is not " \
+                log.warning("provided -o|--option, but 'opt-cmd' is not "
                             "defined in '%s' section" % env['section'].value)
             else:
                 env.add(run(env['opt-cmd'].value, env))

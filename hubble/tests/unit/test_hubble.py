@@ -43,6 +43,7 @@ class TestEnv(unittest.TestCase):
         parser = argparse.ArgumentParser()
         parser.add_argument('env')
         parser.add_argument('--user', default='', required=False)
+        parser.add_argument('--option')
         args = parser.parse_args(['blah'])
 
         file = StringIO("[hubble]\n"
