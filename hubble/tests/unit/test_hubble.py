@@ -12,13 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from hubble.shell import empty, Env, get_environments, run, to_dict
+from hubble.config import parse_configs
+
+from io import StringIO
 import argparse
 import unittest
-
-from six.moves import StringIO
-
-from hubble.config import parse_configs
-from hubble.shell import empty, Env, get_environments, run, to_dict
 
 
 class TestEnv(unittest.TestCase):
@@ -46,7 +45,7 @@ class TestEnv(unittest.TestCase):
         parser.add_argument('--option')
         args = parser.parse_args(['blah'])
 
-        file = StringIO("[hubble]\n"
+        file = StringIO(u"[hubble]\n"
                         "name=My name is ${FIRST} ${last}\n"
                         "[prod-meta]\n"
                         "meta=['name', 'place']\n"

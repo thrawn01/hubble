@@ -12,11 +12,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from configparser import _UNSET, \
+    NoOptionError, NoSectionError, RawConfigParser
+
+from io import StringIO
 from itertools import chain
 import os
 
-from backports.configparser import _UNSET, \
-    NoOptionError, NoSectionError, RawConfigParser
 from six import string_types
 
 
@@ -102,9 +104,18 @@ class ErrorConfigParser(SafeConfigParser):
 def open_fd(file):
     """ Open the file if possible, else return None """
     try:
+        if isinstance(file, StringIO):
+            return file
         return open(file)
     except IOError:
         return None
+
+
+def exists(obj):
+    """Returns true if obj is a StringIO or if the path exists """
+    if isinstance(obj, StringIO):
+        return True
+    return os.pathy.exists(obj)
 
 
 def read_configs(files=None, default_section=None):
@@ -114,7 +125,7 @@ def read_configs(files=None, default_section=None):
     """
     files = files or [os.path.expanduser('~/.hubblerc'), '.hubblerc']
     # If non of these files exist, raise an error
-    if not any([os.path.exists(rc) for rc in files]):
+    if not any([exists(rc) for rc in files]):
         return ErrorConfigParser("Unable to find config files in these"
                                  " locations [%s]" % ", ".join(files))
     return parse_configs([open_fd(file) for file in files], default_section)
