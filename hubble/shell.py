@@ -15,13 +15,14 @@
 from __future__ import print_function
 
 import argparse
-from configparser import NoOptionError, NoSectionError
 import logging
 import os
 import re
 from subprocess import check_output, PIPE, Popen
 import sys
 import textwrap
+
+from backports.configparser import NoOptionError, NoSectionError
 
 from hubble.config import read_configs
 
