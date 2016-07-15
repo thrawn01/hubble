@@ -191,12 +191,8 @@ def get_environments(args, choice, config):
 
         # Populate environment vars by running opt-cmd
         # if -o was passed on the commandline
-        if args.option:
-            if 'opt-cmd' not in env:
-                log.warning("provided -o|--option, but 'opt-cmd' is not "
-                            "defined in '%s' section" % env['section'].value)
-            else:
-                env.add(run(env['opt-cmd'].value, env))
+        if 'opt-cmd' in env:
+            env.add(run(env['opt-cmd'].value, env))
 
         # Populate environment vars by running the env-cmd if it exists
         if 'env-cmd' in env:
