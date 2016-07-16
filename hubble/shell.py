@@ -18,7 +18,7 @@ import argparse
 import logging
 import os
 import re
-from subprocess import CalledProcessError, check_output, PIPE, Popen
+from subprocess import check_output, PIPE, Popen
 import sys
 import textwrap
 
@@ -78,7 +78,7 @@ class Env(dict):
                 # Delete the key from the env
                 self.delete(key)
             # else add it
-            self.set(key, value, section, key.isupper())
+            self.set(key, value, section)
 
     def eval(self):
         """ Exapand all the ${variable} directives in the collection """
@@ -146,6 +146,22 @@ def green(msg):
     return "\033[92m%s\033[0m" % msg
 
 
+def get_cmd(argv, conf, env, hubble_args):
+    # If our invocation name is not 'hubble'
+    if not argv[0].endswith('hubble'):
+        return cmd_path(argv[0], conf)
+
+    if hubble_args.execute:
+        # Use the command provided
+        return hubble_args.execute
+
+    try:
+        return env['cmd'].value
+    except KeyError:
+        raise RuntimeError("Please specify a 'cmd' somewhere in "
+                           "your config")
+
+
 def get_environments(args, choice, config):
     """ Get the environment collection requested from args.env """
     sections = [choice]
@@ -172,8 +188,20 @@ def get_environments(args, choice, config):
             return "opt.%s" % i[0], str(i[1])
         # Add the args to the environment as opt.'<arg_name>'
         env.add(dict(map(f, vars(args).items())), section)
+
+        env.eval()
+
+        # Populate environment vars by running opt-cmd
+        # if -o was passed on the commandline
+        if 'opt-cmd' in env:
+            env.add(run(env['opt-cmd'].value, env))
+
+        # Populate environment vars by running the env-cmd if it exists
+        if 'env-cmd' in env:
+            env.add(run(env['env-cmd'].value, env))
+
         # Apply var expansion
-        results.append(env.eval())
+        results.append(env)
     return results
 
 
@@ -223,7 +251,7 @@ def cmd_path(cmd, conf):
     return "/usr/bin/%s" % basename
 
 
-def eval_args(conf, parser):
+def eval_args(argv, conf, parser):
     env = conf.safe_get(conf.default_section, 'default-env')
     # If no default environment set, look for an
     # environment choice on the command line
@@ -231,14 +259,46 @@ def eval_args(conf, parser):
         help = "The environment defined in ~/.hubblerc to use"
         parser.add_argument('env', nargs='?', metavar='<ENV>',
                             help=help)
-        (arg1, arg2) = parser.parse_known_args()
-        return (arg1, arg2, arg1.env)
+        (arg1, arg2) = parser.parse_known_args(args=argv[1:])
+        return arg1, arg2, arg1.env
     # Return the args with the default environment choice
-    (arg1, arg2) = parser.parse_known_args()
-    return (arg1, arg2, env)
+    (arg1, arg2) = parser.parse_known_args(args=argv[1:])
+    return arg1, arg2, env
 
 
-def main():
+def execute_environment(cmd, env, hubble_args, other_args):
+    # If --debug; print out our env config and pass along the
+    # --debug arg
+    if hubble_args.debug:
+        # For cinder client debug
+        if cmd.endswith('cinder'):
+            env.add({'CINDERCLIENT_DEBUG': '1'})
+        print("%r\n" % env)
+        other_args.insert(0, '--debug')
+
+    # Grab a copy of the local environment and inject it into
+    # our environment
+    environ = os.environ.copy()
+    environ.update(env.to_dict())
+
+    try:
+        # Run the requested command
+        p = Popen([cmd] + other_args,
+                  stdout=PIPE,
+                  stderr=PIPE,
+                  env=environ)
+    except OSError as e:
+        if e.errno == 2:
+            print("-- No such executable '%s', you must specify the "
+                  "executable in the [hubble-commands] section of the "
+                  "config (See README)" % cmd.value)
+        message = "exec failed '%s' - %s" % (cmd.value, e)
+        raise RuntimeError(message)
+
+    return p
+
+
+def main(argv=sys.argv, stdout=sys.stdout, stderr=sys.stderr, files=None):
     logging.basicConfig(format='-- %(message)s')
     log.setLevel(logging.CRITICAL)
     formatter_class = argparse.RawDescriptionHelpFormatter
@@ -250,7 +310,7 @@ def main():
             on environment variables for configuration.
 
             Use ~/.hubblerc for user wide environments then place a
-            .hubblerc in a local directory to overide ~/.hubblerc
+            .hubblerc in a local directory to override ~/.hubblerc
             """))
     parser.add_argument('-o', '--option',
                         help="an argument to pass to the opt-cmd")
@@ -262,109 +322,47 @@ def main():
                         help="Adds CINDERCLIENT_DEBUG=1 to the environment "
                         "and passes --debug to selected command")
 
-    try:
-        # Read the configs
-        conf = read_configs(default_section='hubble')
-        # Evaluate the command line arguments and return our args
-        # the commands args and the environment choice the user made
-        hubble_args, other_args, choice = eval_args(conf, parser)
-        # Do this so we pass along the -h to the command
-        # if we are using invocation discovery
-        if hubble_args.help and (choice is None):
-            return parser.print_help()
+    # Read the configs
+    conf = read_configs(files=files, default_section='hubble')
+    # Evaluate the command line arguments and return our args
+    # the commands args and the environment choice the user made
+    hubble_args, other_args, choice = eval_args(argv, conf, parser)
+    # Do this so we pass along the -h to the command
+    # if we are using invocation discovery
+    if hubble_args.help and (choice is None):
+        return parser.print_help()
 
-        # If there was an error
-        if conf.get_error():
-            print(conf.get_error())
-            return 1
-
-        if choice is None:
-            print("Environments Configured: %s" % ",".join(conf.sections()))
-            print("See --help for usage")
-            return 1
-        if hubble_args.help:
-            other_args.append('--help')
-
-        # Set our log level
-        if hubble_args.debug:
-            log.setLevel(logging.DEBUG)
-
-        # Read environment values from config files
-        environments = get_environments(hubble_args, choice, conf)
-        processes = []
-        for env in environments:
-            # Populate environment vars by running opt-cmd
-            # if -o was passed on the commandline
-            if hubble_args.option:
-                if 'opt-cmd' not in env:
-                    message = "provided -o|--option, but 'opt-cmd' is not " \
-                              "defined in '%s' section" % env['section'].value
-                    raise RuntimeError(message)
-                env.add(run(env['opt-cmd'].value, env))
-
-            # Populate environment vars by running the env-cmd if it exists
-            if 'env-cmd' in env:
-                env.add(run(env['env-cmd'].value, env))
-
-            # If querying multiple environments, display the env name
-            if hubble_args.debug:
-                print("-- [%s] --" % green(env['section'].value))
-
-            # If our invocation name is not 'hubble'
-            if not sys.argv[0].endswith('hubble'):
-                # Use the invocation name as our 'cmd'
-                env.add({'cmd': cmd_path(sys.argv[0], conf)})
-
-            if hubble_args.execute:
-                # Use the command provided
-                env.add({'cmd': hubble_args.execute})
-
-            # At this point we should know our 'cmd' to run
-            if 'cmd' not in env:
-                raise RuntimeError("Please specify a 'cmd' somewhere in "
-                                   "your config")
-
-            # If --debug; print out our env config and pass along the
-            # --debug arg
-            if hubble_args.debug:
-                # For cinder client debug
-                if env['cmd'].endswith('cinder'):
-                    env.add({'CINDERCLIENT_DEBUG': '1'})
-                print("%r\n" % env)
-                other_args.insert(0, '--debug')
-
-            # Grab a copy of the local environment and inject it into
-            # our environment
-            environ = os.environ.copy()
-            environ.update(env.to_dict())
-
-            try:
-                # Run the requested command
-                p = Popen([env['cmd'].value] + other_args,
-                          stdout=PIPE,
-                          stderr=PIPE,
-                          env=environ)
-                processes.append((p, env['section'].value))
-            except OSError as e:
-                if e.errno == 2:
-                    print("-- No such executable '%s', you must specify the "
-                          "executable in the [hubble-commands] section of the "
-                          "config (See README)" % env['cmd'].value)
-                message = "exec failed '%s' - %s" % (env['cmd'].value, e)
-                raise RuntimeError(message)
-
-        for p, env in processes:
-            if len(environments) != 1:
-                print("-- [%s] --" % green(env))
-            # Wait for the command to complete
-            stdout, stderr = p.communicate()
-            sys.stdout.write(stdout.decode('utf-8'))
-            sys.stderr.write(stderr.decode('utf-8'))
-
-    except (RuntimeError, NoSectionError) as e:
-        log.critical(e)
+    # If there was an error
+    if conf.get_error():
+        print(conf.get_error())
         return 1
-    except CalledProcessError as e:
-        log.critical(e.output)
-        log.critical(e)
+
+    if choice is None:
+        print("Environments Configured: %s" % ",".join(conf.sections()))
+        print("See --help for usage")
         return 1
+    if hubble_args.help:
+        other_args.append('--help')
+
+    # Set our log level
+    if hubble_args.debug:
+        log.setLevel(logging.DEBUG)
+
+    # Collect all environments from our config file
+    environments = get_environments(hubble_args, choice, conf)
+    processes = []
+    for env in environments:
+        # Get the command to execute
+        cmd = get_cmd(argv, conf, env, hubble_args)
+        # Create the selected environment to execute our command in
+        p = execute_environment(cmd, env, hubble_args, other_args)
+        processes.append((p, env['section'].value))
+
+    for p, env in processes:
+        if len(environments) != 1:
+            print("-- [%s] --" % green(env))
+        # Wait for the command to complete
+        out, err = p.communicate()
+        stdout.write(out.decode('utf-8'))
+        stderr.write(err.decode('utf-8'))
+    return 0

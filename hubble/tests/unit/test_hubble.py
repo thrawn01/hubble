@@ -13,9 +13,8 @@
 #   limitations under the License.
 
 import argparse
+from io import StringIO
 import unittest
-
-from six.moves import StringIO
 
 from hubble.config import parse_configs
 from hubble.shell import empty, Env, get_environments, run, to_dict
@@ -43,9 +42,10 @@ class TestEnv(unittest.TestCase):
         parser = argparse.ArgumentParser()
         parser.add_argument('env')
         parser.add_argument('--user', default='', required=False)
+        parser.add_argument('--option')
         args = parser.parse_args(['blah'])
 
-        file = StringIO("[hubble]\n"
+        file = StringIO(u"[hubble]\n"
                         "name=My name is ${FIRST} ${last}\n"
                         "[prod-meta]\n"
                         "meta=['name', 'place']\n"
