@@ -140,6 +140,13 @@ python setup.py install
 pip install hubble
 ```
 
+## Golang Version
+This is a work in progress and only supports a subset of features
+
+```
+go install github.com/thrawn01/hubble
+```
+
 # Configuration
 To use hubble, you must define some environments in the config file ``~/.hubblerc``.
 Each environment is given a name followed by the variables that will be populated

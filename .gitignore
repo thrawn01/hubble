@@ -12,3 +12,6 @@ ChangeLog
 .cache/
 .idea/
 .tox/
+.eggs/
+hubble.darwin
+hubble.linux
