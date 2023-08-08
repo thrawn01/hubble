@@ -17,12 +17,18 @@ import (
 
 func Run(argv []string, rcLocations []string) {
 
+	conf := &Config{IncludeLocalEnv: true}
+	if os.Getenv("HUBBLE_DEBUG") != "" {
+		fmt.Printf("Debug on\n")
+		conf.Debug = true
+	}
+
 	// Read all the rc files
-	rc, err := parseRCFiles(rcLocations)
+	rc, err := parseRCFiles(conf, rcLocations)
 	checkErr(err, "while parsing configs")
 
 	// Figure out which env the user has chosen
-	conf, cmdArgs, choice, err := evalArgs(argv, rc)
+	cmdArgs, choice, err := evalArgs(argv, conf, rc)
 	checkErr(err, "")
 
 	if conf.Debug {
@@ -108,12 +114,15 @@ func expand(path string) string {
 }
 
 // Finds all given and default configs loading each in order
-func parseRCFiles(p []string) (*goini.INI, error) {
+func parseRCFiles(conf *Config, p []string) (*goini.INI, error) {
 	paths := []string{expand("~/.hubblerc"), ".hubblerc"}
 	paths = append(paths, p...)
 
 	result := goini.New()
 	for _, file := range paths {
+		if conf.Debug {
+			fmt.Printf("Read: %s\n", file)
+		}
 		contents, err := ioutil.ReadFile(file)
 		if err != nil {
 			continue
@@ -235,14 +244,14 @@ type Config struct {
 	Debug           bool
 }
 
-func evalArgs(argv []string, rc *goini.INI) (conf *Config, cmdArgs []string, env string, err error) {
+func evalArgs(argv []string, conf *Config, rc *goini.INI) (cmdArgs []string, env string, err error) {
 	// TODO: Get this from thrawn01/cli
 	conf = &Config{IncludeLocalEnv: true}
 	env, ok := rc.Get("default-env")
 	if !ok {
 		// If no default-env defined, env should be the first arg
 		if len(argv) == 1 {
-			return nil, nil, "", errors.New("no 'default-env' defined and no environment provided vi cli args")
+			return nil, "", errors.New("no 'default-env' defined and no environment provided vi cli args")
 		}
 		env = argv[1]
 		if len(argv) > 2 {
@@ -259,17 +268,12 @@ func evalArgs(argv []string, rc *goini.INI) (conf *Config, cmdArgs []string, env
 			}
 			sections = append(sections, k)
 		}
-		return nil, nil, "", fmt.Errorf("env '%s' not defined in config; environments configured: %s",
+		return nil, "", fmt.Errorf("env '%s' not defined in config; environments configured: %s",
 			env, strings.Join(sections, ","))
 	}
 	// TODO: Use thrawn/cli to parse what args we know about, and leave the rest for the command
 
-	// TODO: change this to a cli arg
-	if os.Getenv("HUBBLE_DEBUG") != "" {
-		conf.Debug = true
-	}
-
-	return conf, cmdArgs, env, nil
+	return cmdArgs, env, nil
 }
 
 // Given a python like array, return a slice of string items.
